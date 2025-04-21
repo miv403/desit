@@ -1,6 +1,7 @@
 import socket
 import queue
 import sys
+import threading
 
 if "--debug" in sys.argv:
     DEBUG = True
@@ -16,6 +17,28 @@ class Host:
         self.FORMAT = "UTF-8"
         self.knownDevices = []
         self.jobQueue = queue.Queue()
+
+        self.ID = self.getID()
+
+        print(f"WELCOME!")
+        print(f"LOCAL IP ADDRESS: {host.HOST_ADDR[0]}")
+        print(f"CURRENT GLOBAL PORT: {host.HOST_ADDR[1]}")
+
+        print("[1]: listen")
+        print("[2]: send")
+        choice = input("? ")
+        
+        match choice:
+            case "1":
+                thread = threading.Thread(target=Host.listenBroadcast,
+                                            args=(host,))
+            case "2":
+                msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} ID::{self.ID}" # FIXME daha yapısal bir msg bulunmalı, json?
+                brdIP = "192.168.1.255"
+                thread = threading.Thread(target=Host.broadcast,
+                                            args=(host, msg, brdIP))
+
+        thread.start()
 
     def listenBroadcast(self):
         
@@ -35,7 +58,8 @@ class Host:
             
             RESPONSE = "OK::CONNECTION" # FIXME şimdilik
             
-            if data.startswith("REQ::CONNECTION"): # FIXME şimdilik
+            if data.startswith("REQ::CONNECTION"):
+                # FIXME yapısal bir msg yöntemi geçildiğinde ID ve IP de msg içinden ayrıştırılmalı
                 # duruma göre handleNewClient() gibi bir fn çağırılabilir
                 s.sendto(RESPONSE.encode(self.FORMAT), address)
                 print(f"[SENT] {RESPONSE} to {str(address)}")
@@ -62,7 +86,7 @@ class Host:
                 # TODO bu tür mesajlaşma işlemleri \
                 #       zeromq kütüphanesi ile yapılmalı.
 
-                print("[SENDING] ")
+                print("[SENDING]")
                 sent = s.sendto(msg.encode(self.FORMAT), brdAddr)
                 
                 print("[WAITING]")
@@ -84,3 +108,12 @@ class Host:
             
         finally:
             s.close()
+        
+        def getID(self):
+            
+            # TODO getID(): public-private key oluşturma vs.
+            # if (kayıtlı anahtar dosyası)
+            # return dosya.ID
+            # else: dosya oluştur
+            
+            return "ABC123"
