@@ -33,7 +33,7 @@ class Host:
         listenBroadcast_T = threading.Thread(target=self.listenBroadcast)
         listenBroadcast_T.start()
 
-        replyID_T = threading.Thread(target=self.replyID)
+        replyID_T = threading.Thread(target=self.rep)
         replyID_T.start()
         
         # print("[1]: listen")
@@ -153,7 +153,7 @@ class Host:
         newDevice = Device(addr)
         self.knownDevices.append(newDevice)
 
-    def repID():
+    def rep(self):
         context = zmq.Context()
         socket = context.socket(zmq.REP)
         socket.bind("tcp://*:5555")
