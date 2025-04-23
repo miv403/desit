@@ -2,6 +2,7 @@ import socket
 import queue
 import sys
 import threading
+from device import Device
 
 if "--debug" in sys.argv:
     DEBUG = True
@@ -15,30 +16,36 @@ class Host:
         self.PORT = 6161
         self.HOST_ADDR = (self.LOCALHOST, self.PORT)
         self.FORMAT = "UTF-8"
-        self.knownDevices = []
+        self.knownDevices = [] # class Device list
         self.jobQueue = queue.Queue()
 
         self.ID = self.getID()
 
         print(f"WELCOME!")
-        print(f"LOCAL IP ADDRESS: {host.HOST_ADDR[0]}")
-        print(f"CURRENT GLOBAL PORT: {host.HOST_ADDR[1]}")
+        print(f"HOST_ADDR: {self.HOST_ADDR}")
+        # print(f"LOCAL IP ADDRESS: {self.HOST_ADDR[0]}")
+        # print(f"CURRENT GLOBAL PORT: {self.HOST_ADDR[1]}")
 
-        print("[1]: listen")
-        print("[2]: send")
-        choice = input("? ")
+        print("[LISTENING] broadcast listening")
+
+        listenBroadcast_T = threading.Thread(target=self.listenBroadcast)
+        listenBroadcast_T.start()
+
+        # print("[1]: listen")
+        # print("[2]: send")
+        # choice = input("? ")
+
+        print("Do you want to broadcast?")
+        choice = input("[Y/n]: ")
         
-        match choice:
-            case "1":
-                thread = threading.Thread(target=Host.listenBroadcast,
-                                            args=(host,))
-            case "2":
-                msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} ID::{self.ID}" # FIXME daha yapısal bir msg bulunmalı, json?
-                brdIP = "192.168.1.255"
-                thread = threading.Thread(target=Host.broadcast,
-                                            args=(host, msg, brdIP))
-
-        thread.start()
+        if (choice == "y" or choice == "Y"):
+            
+            msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} ID::{self.ID}" # FIXME daha yapısal bir msg bulunmalı, json?
+            brdIP = "192.168.1.255"
+            broadcast_T = threading.Thread(target=self.broadcast,
+                                        args=(msg, brdIP))
+    
+            broadcast_T.start()
 
     def listenBroadcast(self):
         
@@ -53,18 +60,31 @@ class Host:
             data = str(data.decode(self.FORMAT))
             
             if DEBUG:
-                print(f"[MSG] {len(data)}B from {str(address)}")
+                print("[DEBUG]")
+                print(f"\t[MSG] {len(data)}B from {str(address)}")
                 print(f"\t[DATA] {data}")
             
             RESPONSE = "OK::CONNECTION" # FIXME şimdilik
             
+            if address[0] == self.HOST_ADDR[0]:
+                # kendi broadcast msg görmezden geliniyor.
+                continue
+            
             if data.startswith("REQ::CONNECTION"):
                 # FIXME yapısal bir msg yöntemi geçildiğinde ID ve IP de msg içinden ayrıştırılmalı
                 # duruma göre handleNewClient() gibi bir fn çağırılabilir
+                
+                devID = "9876" # FIXME gelen string içerisinden temin edilmeli
+                
+                
                 s.sendto(RESPONSE.encode(self.FORMAT), address)
                 print(f"[SENT] {RESPONSE} to {str(address)}")
+
+                addNewDevice_T = threading.Thread(target=self.addNewDevice,
+                                                    args=(address))
+                addNewDevice_T.start()
             
-            print("Do you want to add another device [y/n]") # FIXME şimdilik
+            print("Do you want to add another device [y/n]: ") # FIXME şimdilik
             
             if(input() == "n"):
                 break
@@ -92,10 +112,15 @@ class Host:
                 print("[WAITING]")
                 data, server = s.recvfrom(4096)
                 
+                devID = "9876"
+                
                 if data.decode(self.FORMAT).startswith("OK::CONNECTION"):
                     print(f"[CONNECTION] {str(server)} accepted to connect")
 
-                    self.knownDevices.append(server)
+                    addNewDevice_T = threading.Thread(target=self.addNewDevice,
+                                                        args=(server))
+                    addNewDevice_T.start()
+
                     break
                 else:
                     print(f"[FAILED] {str(server)} didn't confirm connection")
@@ -109,11 +134,22 @@ class Host:
         finally:
             s.close()
         
-        def getID(self):
-            
-            # TODO getID(): public-private key oluşturma vs.
-            # if (kayıtlı anahtar dosyası)
+    def getID(self):
+        
+        # TODO getID(): public-private key oluşturma vs.
+        # if (kayıtlı anahtar dosyası)
             # return dosya.ID
-            # else: dosya oluştur
-            
-            return "ABC123"
+        # else: 
+            #  dosya oluştur & return ID
+        
+        return "ABC123"
+    
+    def addNewDevice(self, addr):
+        
+        newDevice = Device(addr,devID)
+        self.knownDevices.append(newDevice)
+        
+        
+    def replyID():
+        
+        pass
