@@ -2,6 +2,8 @@ import socket
 import queue
 import sys
 import threading
+import zmq
+import time
 from device import Device
 
 if "--debug" in sys.argv:
@@ -31,6 +33,9 @@ class Host:
         listenBroadcast_T = threading.Thread(target=self.listenBroadcast)
         listenBroadcast_T.start()
 
+        replyID_T = threading.Thread(target=self.replyID)
+        replyID_T.start()
+        
         # print("[1]: listen")
         # print("[2]: send")
         # choice = input("? ")
@@ -75,7 +80,6 @@ class Host:
                 # duruma göre handleNewClient() gibi bir fn çağırılabilir
                 
                 devID = "9876" # FIXME gelen string içerisinden temin edilmeli
-                
                 
                 s.sendto(RESPONSE.encode(self.FORMAT), address)
                 print(f"[SENT] {RESPONSE} to {str(address)}")
@@ -141,15 +145,27 @@ class Host:
             # return dosya.ID
         # else: 
             #  dosya oluştur & return ID
-        
+
         return "ABC123"
     
     def addNewDevice(self, addr):
         
-        newDevice = Device(addr,devID)
+        newDevice = Device(addr)
         self.knownDevices.append(newDevice)
-        
-        
-    def replyID():
-        
-        pass
+
+    def repID():
+        context = zmq.Context()
+        socket = context.socket(zmq.REP)
+        socket.bind("tcp://*:5555")
+
+        while True:
+            #  Wait for next request from client
+            message = socket.recv()
+            print(f"Received request: {message}")
+
+            #  Do some 'work'
+            time.sleep(1)
+
+            if message.startswith("REQ::ID"):
+                #  Send reply back to client
+                socket.send_string(self.getID())
