@@ -23,11 +23,12 @@ class Host:
 
         self.ID = self.getID()
 
+    def start(self):
+        
         print(f"WELCOME!")
         print(f"HOST_ADDR: {self.HOST_ADDR}")
         # print(f"LOCAL IP ADDRESS: {self.HOST_ADDR[0]}")
         # print(f"CURRENT GLOBAL PORT: {self.HOST_ADDR[1]}")
-
         print("[LISTENING] broadcast listening")
 
         listenBroadcast_T = threading.Thread(target=self.listenBroadcast)
@@ -44,7 +45,6 @@ class Host:
         choice = input("[Y/n]: ")
         
         if (choice == "y" or choice == "Y"):
-            
             msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} ID::{self.ID}" # FIXME daha yapısal bir msg bulunmalı, json?
             brdIP = "192.168.1.255"
             broadcast_T = threading.Thread(target=self.broadcast,
@@ -139,6 +139,9 @@ class Host:
             s.close()
         
     def getID(self):
+        
+        # mkdir -p ./.config/ && ssh-keygen -t ecdsa -b 521 -f ./.config/host-key-ecdsa-521 -N "" 
+    
         
         # TODO getID(): public-private key oluşturma vs.
         # if (kayıtlı anahtar dosyası)

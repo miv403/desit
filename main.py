@@ -15,6 +15,7 @@ def main():
         print("debugging...\n\n")
 
     host = Host()
+    host.start()
 
 if __name__ == "__main__":
     main()
