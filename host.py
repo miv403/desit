@@ -54,7 +54,7 @@ class Host:
         choice = input("[Y/n]: ")
         
         if (choice == "y" or choice == "Y"):
-            msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} PUB_KEY::{self.PUB_KEY}" # FIXME daha yapısal bir msg bulunmalı, json?
+            # msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} PUB_KEY::{self.PUB_KEY}" # DONE daha yapısal bir msg bulunmalı, json?
             
             brdIP = "192.168.1.255"
             broadcast_T = threading.Thread(target=self.broadcast,
@@ -83,7 +83,7 @@ class Host:
                 # kendi broadcast msg görmezden geliniyor.
                 continue            
 
-            # RESPONSE = "OK::CONNECTION" # FIXME şimdilik
+            # RESPONSE = "OK::CONNECTION" # DONE şimdilik
             
             response = Messaging.toDict( MsgType.connectionOK,
                                         self.LOCALHOST,
@@ -94,7 +94,7 @@ class Host:
             
             # if data.startswith("REQ::CONNECTION"):
             if dataDict["TYPE"] == "CONNECTION::REQ":
-                # FIXME yapısal bir msg yöntemi geçildiğinde PUB_KEY ve IP de msg içinden ayrıştırılmalı
+                # DONE yapısal bir msg yöntemi geçildiğinde PUB_KEY ve IP de msg içinden ayrıştırılmalı
                 # duruma göre handleNewClient() gibi bir fn çağırılabilir
                 
                 print(f"[CONNECTION] {str(server)} requested to connect")
@@ -167,7 +167,7 @@ class Host:
         finally:
             s.close()
         
-    def getPubKey(self):
+    def getPubKey(self): # TODO test: getPubKey()
         
         # mkdir -p ./.config/ 
         # &&
@@ -190,7 +190,7 @@ class Host:
         
         return keyFile.readlines()[0]
         
-        # TODO getPUB_KEY(): public-private key oluşturma vs.
+        # DONE getPUB_KEY(): public-private key oluşturma vs.
         # if (kayıtlı anahtar dosyası)
             # return dosya.PUB_KEY
         # else: 
@@ -200,15 +200,15 @@ class Host:
     
     def addNewDevice(self, addr):
         
-        # FIXME aygıt knownDevices içinde mi? kontrol edilmeli
+        # TODO aygıt knownDevices içinde mi? kontrol edilmeli
         
         newDevice = Device(addr)
         self.knownDevices.append(newDevice)
 
-    def rep(self):
+    def rep(self): # TODO test: rep()
         context = zmq.Context()
         socket = context.socket(zmq.REP)
-        socket.bind("tcp://*:6162") # TODO REP-REQ portu belirle
+        socket.bind("tcp://*:6162") # DONE REP-REQ portu belirle
 
         while True:
             #  Wait for next request from client
