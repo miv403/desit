@@ -8,6 +8,7 @@ from device import Device
 import subprocess
 import os
 import json
+from Messaging import Messaging, MsgType
 
 if "--debug" in sys.argv:
     DEBUG = True
@@ -21,6 +22,7 @@ HOST_KEY_DIR = "./.config/hostkey/"
 class Host:
 
     def __init__(self):
+
         self.HOSTNAME = socket.gethostname()
         self.LOCALHOST = socket.gethostbyname(self.HOSTNAME)
         self.PORT = 6161
@@ -30,6 +32,9 @@ class Host:
         self.jobQueue = queue.Queue()
 
         self.PUB_KEY = self.getPubKey() # "alg KEY user@host"
+        self.ID = self.PUB_KEY[-16:]    # ID PUB_KEY son 16 karakteri
+        
+        # TODO build or edit config file
 
     def start(self):
         
@@ -44,19 +49,16 @@ class Host:
 
         rep_T = threading.Thread(target=self.rep)
         rep_T.start()
-        
-        # print("[1]: listen")
-        # print("[2]: send")
-        # choice = input("? ")
 
         print("Do you want to broadcast?")
         choice = input("[Y/n]: ")
         
         if (choice == "y" or choice == "Y"):
             msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} PUB_KEY::{self.PUB_KEY}" # FIXME daha yapısal bir msg bulunmalı, json?
+            
             brdIP = "192.168.1.255"
             broadcast_T = threading.Thread(target=self.broadcast,
-                                        args=(msg, brdIP))
+                                        args=(brdIP))
     
             broadcast_T.start()
 
@@ -75,22 +77,32 @@ class Host:
             if DEBUG:
                 print("[DEBUG]")
                 print(f"\t[MSG] {len(data)}B from {str(address)}")
-                print(f"\t[DATA] {data}")
-            
-            RESPONSE = "OK::CONNECTION" # FIXME şimdilik
-            
-            if address[0] == self.HOST_ADDR[0]:
+                print(f"\t[DATA] {data[:24]} ...")
+
+            if address[0] == self.LOCALHOST:
                 # kendi broadcast msg görmezden geliniyor.
-                continue
+                continue            
+
+            # RESPONSE = "OK::CONNECTION" # FIXME şimdilik
             
-            if data.startswith("REQ::CONNECTION"):
+            response = Messaging.toDict( MsgType.connectionOK,
+                                        self.LOCALHOST,
+                                        self.ID)
+            reponse = json.dumps(response)
+            
+            dataDict = json.loads(data)
+            
+            # if data.startswith("REQ::CONNECTION"):
+            if dataDict["TYPE"] == "CONNECTION::REQ":
                 # FIXME yapısal bir msg yöntemi geçildiğinde PUB_KEY ve IP de msg içinden ayrıştırılmalı
                 # duruma göre handleNewClient() gibi bir fn çağırılabilir
                 
-                devPUB_KEY = "9876" # FIXME gelen string içerisinden temin edilmeli
+                print(f"[CONNECTION] {str(server)} requested to connect")
+                print(f"\tADDR: {dataDict["ADDR"]}")
+                print(f"\tID: {dataDict["ID"]}")
                 
-                s.sendto(RESPONSE.encode(self.FORMAT), address)
-                print(f"[SENT] {RESPONSE} to {str(address)}")
+                s.sendto(response.encode(self.FORMAT), address)
+                print(f"[SENT] {response[:16] + " ... " + response[-20:]} to {str(address)}")
 
                 addNewDevice_T = threading.Thread(target=self.addNewDevice,
                                                     args=(address))
@@ -101,7 +113,7 @@ class Host:
             if(input() == "n"):
                 break
 
-    def broadcast(self, msg, brdIP):
+    def broadcast(self, brdIP):
         # broadcast adresine ilgili mesajı gönderecek fn
         
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -111,11 +123,16 @@ class Host:
         
         brdAddr = (brdIP, self.PORT)
         
-        msg = "REQ::CONNECTION" # FIXME şimdilik
+        # msg = "REQ::CONNECTION" # DONE şimdilik
+        
+        msg = Messaging.toDict( MsgType.connectionREQ,
+                                    self.LOCALHOST,
+                                    self.ID)
+        msg = json.dumps(msg)
         
         try:
             while True:
-                # TODO bu tür mesajlaşma işlemleri \
+                # KILL bu tür mesajlaşma işlemleri \
                 #       zeromq kütüphanesi ile yapılmalı.
 
                 print("[SENDING]")
@@ -123,16 +140,20 @@ class Host:
                 
                 print("[WAITING]")
                 data, server = s.recvfrom(4096)
+                data = data.decode(self.FORMAT) 
                 
-                devPUB_KEY = "9876"
+                dataDict = json.loads(data)
                 
-                if data.decode(self.FORMAT).startswith("OK::CONNECTION"):
+                # if data.decode(self.FORMAT).startswith("OK::CONNECTION"):
+                if dataDict["TYPE"] == "CONNECTION::OK":
+                    
                     print(f"[CONNECTION] {str(server)} accepted to connect")
+                    print(f"\tADDR: {dataDict["ADDR"]}")
+                    print(f"\tID: {dataDict["ID"]}")
 
                     addNewDevice_T = threading.Thread(target=self.addNewDevice,
                                                         args=(server))
                     addNewDevice_T.start()
-
                     break
                 else:
                     print(f"[FAILED] {str(server)} didn't confirm connection")
@@ -140,7 +161,7 @@ class Host:
                 print("[LOG] Trying again")
 
         except TimeoutError as ex:
-            print("broadcast response timeout")
+            print("[BROADCAST] broadcast response timeout")
             print(f"\t{ex}")
             
         finally:
@@ -200,3 +221,6 @@ class Host:
             if message.startswith("REQ::PUB_KEY"):
                 #  Send reply back to client
                 socket.send_string(self.getPubKey())
+
+    def getID(self):
+        return self.ID
