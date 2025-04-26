@@ -5,23 +5,31 @@ import threading
 import zmq
 import time
 from device import Device
+import subprocess
+import os
+import json
 
 if "--debug" in sys.argv:
     DEBUG = True
 else:
     DEBUG = False
 
+CONFIG_DIR = "./.config/"
+KEYS_DIR = "./.config/keys/"
+HOST_KEY_DIR = "./.config/hostkey/"
+
 class Host:
 
     def __init__(self):
-        self.LOCALHOST = socket.gethostbyname(socket.gethostname())
+        self.HOSTNAME = socket.gethostname()
+        self.LOCALHOST = socket.gethostbyname(self.HOSTNAME)
         self.PORT = 6161
         self.HOST_ADDR = (self.LOCALHOST, self.PORT)
         self.FORMAT = "UTF-8"
         self.knownDevices = [] # class Device list
         self.jobQueue = queue.Queue()
 
-        self.ID = self.getID()
+        self.PUB_KEY = self.getPubKey() # "alg KEY user@host"
 
     def start(self):
         
@@ -34,8 +42,8 @@ class Host:
         listenBroadcast_T = threading.Thread(target=self.listenBroadcast)
         listenBroadcast_T.start()
 
-        replyID_T = threading.Thread(target=self.rep)
-        replyID_T.start()
+        rep_T = threading.Thread(target=self.rep)
+        rep_T.start()
         
         # print("[1]: listen")
         # print("[2]: send")
@@ -45,7 +53,7 @@ class Host:
         choice = input("[Y/n]: ")
         
         if (choice == "y" or choice == "Y"):
-            msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} ID::{self.ID}" # FIXME daha yapısal bir msg bulunmalı, json?
+            msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} PUB_KEY::{self.PUB_KEY}" # FIXME daha yapısal bir msg bulunmalı, json?
             brdIP = "192.168.1.255"
             broadcast_T = threading.Thread(target=self.broadcast,
                                         args=(msg, brdIP))
@@ -76,10 +84,10 @@ class Host:
                 continue
             
             if data.startswith("REQ::CONNECTION"):
-                # FIXME yapısal bir msg yöntemi geçildiğinde ID ve IP de msg içinden ayrıştırılmalı
+                # FIXME yapısal bir msg yöntemi geçildiğinde PUB_KEY ve IP de msg içinden ayrıştırılmalı
                 # duruma göre handleNewClient() gibi bir fn çağırılabilir
                 
-                devID = "9876" # FIXME gelen string içerisinden temin edilmeli
+                devPUB_KEY = "9876" # FIXME gelen string içerisinden temin edilmeli
                 
                 s.sendto(RESPONSE.encode(self.FORMAT), address)
                 print(f"[SENT] {RESPONSE} to {str(address)}")
@@ -116,7 +124,7 @@ class Host:
                 print("[WAITING]")
                 data, server = s.recvfrom(4096)
                 
-                devID = "9876"
+                devPUB_KEY = "9876"
                 
                 if data.decode(self.FORMAT).startswith("OK::CONNECTION"):
                     print(f"[CONNECTION] {str(server)} accepted to connect")
@@ -138,20 +146,40 @@ class Host:
         finally:
             s.close()
         
-    def getID(self):
+    def getPubKey(self):
         
-        # mkdir -p ./.config/ && ssh-keygen -t ecdsa -b 521 -f ./.config/host-key-ecdsa-521 -N "" 
-    
+        # mkdir -p ./.config/ 
+        # &&
+        # ssh-keygen -t ecdsa -b 521 -f ./.config/host-key-ecdsa-521 -N ""  -C "HOSTNAME@LOCALHOST"
         
-        # TODO getID(): public-private key oluşturma vs.
+        if os.path.isdir(HOST_KEY_DIR):
+            try:
+                keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
+            except FileNotFoundError:
+                if not (os.path.isdir(HOST_KEY_DIR)): # dizin oluşturulmamışsa
+                    subprocess.run(["mkdir", "-p", HOST_KEY_DIR])
+                
+                subprocess.run(["ssh-keygen",
+                        "-t", "ecdsa", "-b", "521"            # 521-bit ecdsa
+                        "-f", f"{CONFIG_DIR}{self.HOSTNAME}", # key location
+                        "-N", "",                             # empty passphrase
+                        "-C", f"\"{HOSTNAME}@{LOCALHOST}\""]) # host@localhost
+
+                keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
+        
+        return keyFile.readlines()[0]
+        
+        # TODO getPUB_KEY(): public-private key oluşturma vs.
         # if (kayıtlı anahtar dosyası)
-            # return dosya.ID
+            # return dosya.PUB_KEY
         # else: 
-            #  dosya oluştur & return ID
+            #  dosya oluştur & return PUB_KEY
 
         return "ABC123"
     
     def addNewDevice(self, addr):
+        
+        # FIXME aygıt knownDevices içinde mi? kontrol edilmeli
         
         newDevice = Device(addr)
         self.knownDevices.append(newDevice)
@@ -159,7 +187,7 @@ class Host:
     def rep(self):
         context = zmq.Context()
         socket = context.socket(zmq.REP)
-        socket.bind("tcp://*:5555")
+        socket.bind("tcp://*:6162") # TODO REP-REQ portu belirle
 
         while True:
             #  Wait for next request from client
@@ -169,6 +197,6 @@ class Host:
             #  Do some 'work'
             time.sleep(1)
 
-            if message.startswith("REQ::ID"):
+            if message.startswith("REQ::PUB_KEY"):
                 #  Send reply back to client
-                socket.send_string(self.getID())
+                socket.send_string(self.getPubKey())

@@ -6,11 +6,11 @@ class Device:
     def __init__(self, addr):
         
         self.ADDR = addr
-        self.ID = self.req(Reqs.getID)
+        self.PUB_KEY = self.req(Reqs.PubKey)
         
     
     def getID(self):    # get() for ID
-        return self.ID
+        return self.PUB_KEY
 
     def req(self, reqType):
         context = zmq.Context()
@@ -18,11 +18,11 @@ class Device:
         #  Socket to talk to server
         print(f"[REQ] Requesting from {self.ADDR[0]}")
         socket = context.socket(zmq.REQ)
-        socket.connect(f"tcp://{self.ADDR[0]}:5555")
+        socket.connect(f"tcp://{self.ADDR[0]}:6162") # TODO REP-REQ portu belirle
 
-        if reqType == Reqs.getID:
+        if reqType == Reqs.PubKey:
             print(f"[REQ] Sending request for Reqs.{reqType}")
-            socket.send_string("REQ::ID")
+            socket.send_string("REQ::PUB_KEY")
 
         #  Get the reply.
         message = socket.recv()
