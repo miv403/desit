@@ -1,13 +1,9 @@
-from ip_discovery import ip_disc
 import sys
 import socket
 import threading
 from host import Host
 
-if "--debug" in sys.argv:
-    DEBUG = True
-else:
-    DEBUG = False
+DEBUG = "--debug" in sys.argv
 
 def main():
 
@@ -19,4 +15,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
