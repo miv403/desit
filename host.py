@@ -9,6 +9,7 @@ import subprocess
 import os
 import json
 from messaging import Messaging, MsgType
+from services import ServiceRegister
 
 DEBUG = "--debug" in sys.argv
 
@@ -22,12 +23,10 @@ class Host:
 
         self.HOSTNAME = socket.gethostname()
         # self.LOCALHOST = socket.gethostbyname(self.HOSTNAME)
-
         self.LOCALHOST = self.getLocalIP()
-
-        self.PORT = 6161 # FIXME  bu sadece mDNS için, 
-        self.HOST_ADDR = (self.LOCALHOST, self.PORT)
-        self.FORMAT = "UTF-8"
+        # self.PORT = 6161 # FIXME  bu sadece mDNS için, 
+        # self.HOST_ADDR = (self.LOCALHOST, self.PORT)
+        # self.FORMAT = "UTF-8"
         self.knownDevices = [] # class Device list
         self.jobQueue = queue.Queue()
         self.messaging = Messaging()
@@ -38,14 +37,44 @@ class Host:
         # TODO build or edit config file
 
     def start(self):
-        
+
         print(f"WELCOME!")
-        print(f"HOST_ADDR: {self.HOST_ADDR}")
-        # print(f"LOCAL IP ADDRESS: {self.HOST_ADDR[0]}")
-        # print(f"CURRENT GLOBAL PORT: {self.HOST_ADDR[1]}")
+        print(f"HOST: {self.HOSTNAME}@{self.LOCALHOST}")
+        print(f"HOST ID: {self.ID}")
+        
+        service = ServiceRegister(self.ID, 6161, self.LOCALHOST)
+        service_T = threading.Thread(target=service.register)
+        service_T.start()
+        try:
+            while True:
+                if input("do you want to add new device? [y/n]: ") == "y":
+                    newDevID = input("enter ID: ")
+                    newDev = Device(newDevID)
+                    if newDev.ADDR != None:
+                        pass
+                    else:
+                        # if newDev not in knownDevices
+                        # then .append(newDev)
+                        # else
+                        # print( already added)
+                        pass
+                else:
+                    break
+        except KeyboardInterrupt:
+            print("\n KeyboardInterrupt closing")
+            exit()
 
-
-
+    def getLocalIP(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('10.255.255.255', 1))
+            # gerçekten ulaşılabilir bir adres olması gerekmiyor
+            ip = s.getsockname()[0]
+        except Exception:
+            ip = '127.0.0.1'
+        finally:
+            s.close()
+        return ip
 
     def getPubKey(self): # TODO test: getPubKey()
         
@@ -101,5 +130,6 @@ class Host:
                 #  Send reply back to client
                 socket.send_string(self.getPubKey())
 
-    def getID(self):
+    def getID(self): # FIXME getID fonk.
         return self.ID
+

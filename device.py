@@ -1,16 +1,22 @@
 import zmq
 from req_enum import Reqs
+from services import ServiceDiscover
 
 class Device:
-    
-    def __init__(self, addr):
-        
-        self.ADDR = addr
-        self.PUB_KEY = self.req(Reqs.PubKey)
-        
-    
-    def getID(self):    # get() for ID
-        return self.PUB_KEY
+
+    def __init__(self, _id):
+        self.ID = _id
+        self.ADDR = self.getAddr()
+        # self.PUB_KEY = self.req(Reqs.PubKey) # TODO test: req()
+
+    def getAddr(self):
+        sd = ServiceDiscover(self.ID)
+        addr = sd.discover()
+        if not addr:
+            print(f"[DEVICE] {self.ID} is offline")
+        return addr
+
+
 
     def req(self, reqType):
         context = zmq.Context()
