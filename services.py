@@ -45,17 +45,20 @@ class Listener(ServiceListener):
 
 class Service:
     
-    def __init__(self, _id, port, addr):
-        self.listener = Listener()
+    def __init__(self, _id, port = None, addr = None):
         self.ID = _id
         self.PORT = port
         self.LOCALHOST = addr
         self.APP_NAME = "desit"
-        self.serviceType = "_{self.APP_NAME}._tcp.local."
+        self.serviceType = f"_{self.APP_NAME}._tcp.local."
 
 class ServiceRegister(Service):
     
     def register(self): # mDNS servis kaydı
+        if self.PORT == None or self.LOCALHOST == None:
+            print(f"[ERROR] cannot register service there is no addr or port provided")
+            return
+
         self.serviceName = self.ID
 
         serviceInfo = ServiceInfo(
@@ -69,7 +72,7 @@ class ServiceRegister(Service):
         
         zc = Zeroconf()
         print(f"[SERVICE] registering {self.serviceName} @ {self.LOCALHOST}:{self.PORT}")
-        zc.register_service(self.serviceInfo)
+        zc.register_service(serviceInfo)
         
         try:
             while True:
@@ -83,7 +86,7 @@ class ServiceRegister(Service):
 
 class ServiceDiscover(Service):
 
-    def discoverService(self, timeout = 5):
+    def discover(self, timeout = 5):
         
         # istenen ID (_id) için servis araması yapar.
         # bulunan servisin güncel IP adresi geri döndürülür.
@@ -97,11 +100,14 @@ class ServiceDiscover(Service):
         time.sleep(timeout)
         zc.close()
         
-        if DEBUG:
-            self.servicePrint(listener.foundServices)
-            print(f"[DEBUG] return {listener.foundServices[0]['addresses'][0]}")
 
-        return listener.foundServices[0]['addresses'][0] # bulunan ID için IP adresi döndürülür
+        if listener.foundServices != []:
+            if DEBUG:
+                self.servicePrint(listener.foundServices)
+                print(f"[DEBUG] return {listener.foundServices[0]['addresses'][0]}")
+            return listener.foundServices[0]['addresses'][0] # bulunan ID için IP adresi döndürülür
+        else:
+            return None
 
     def servicePrint(self, service):
         print(f"[DEBUG]")
