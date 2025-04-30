@@ -8,12 +8,9 @@ from device import Device
 import subprocess
 import os
 import json
-from Messaging import Messaging, MsgType
+from messaging import Messaging, MsgType
 
-if "--debug" in sys.argv:
-    DEBUG = True
-else:
-    DEBUG = False
+DEBUG = "--debug" in sys.argv
 
 CONFIG_DIR = "./.config/"
 KEYS_DIR = "./.config/keys/"
@@ -24,16 +21,20 @@ class Host:
     def __init__(self):
 
         self.HOSTNAME = socket.gethostname()
-        self.LOCALHOST = socket.gethostbyname(self.HOSTNAME)
-        self.PORT = 6161
+        # self.LOCALHOST = socket.gethostbyname(self.HOSTNAME)
+
+        self.LOCALHOST = self.getLocalIP()
+
+        self.PORT = 6161 # FIXME UDP broadcast port, 
         self.HOST_ADDR = (self.LOCALHOST, self.PORT)
         self.FORMAT = "UTF-8"
         self.knownDevices = [] # class Device list
         self.jobQueue = queue.Queue()
-
-        self.PUB_KEY = self.getPubKey() # "alg KEY user@host"
-        self.ID = self.PUB_KEY[-16:]    # ID PUB_KEY son 16 karakteri
+        self.messaging = Messaging()
         
+        # self.PUB_KEY = self.getPubKey() # "alg KEY user@host" FIXME test: getPubKey
+        #self.ID = self.PUB_KEY[-16:]    # ID PUB_KEY son 16 karakteri FIXME test: self.ID
+        self.ID = "9876A"
         # TODO build or edit config file
 
     def start(self):
@@ -42,33 +43,48 @@ class Host:
         print(f"HOST_ADDR: {self.HOST_ADDR}")
         # print(f"LOCAL IP ADDRESS: {self.HOST_ADDR[0]}")
         # print(f"CURRENT GLOBAL PORT: {self.HOST_ADDR[1]}")
-        print("[LISTENING] broadcast listening")
 
-        listenBroadcast_T = threading.Thread(target=self.listenBroadcast)
-        listenBroadcast_T.start()
+        # GECICI 
+        # listenBroadcast_T = threading.Thread(target=self.listenBroadcast)
+        # listenBroadcast_T.start()
 
-        rep_T = threading.Thread(target=self.rep)
-        rep_T.start()
+        # ---------------------------------------------------------------#
+        print("[1]: listen")
+        print("[2]: send")
+        choice = input("? ")
+        match choice:
+            case "1":
+                thread = threading.Thread(target=self.listenBroadcast)
+            case "2":
+                brdIP = "255.255.255.255"
+                thread = threading.Thread( target=self.broadcast,
+                                                args=(brdIP,))
+        thread.start()
+        # ---------------------------------------------------------------#
 
-        print("Do you want to broadcast?")
-        choice = input("[Y/n]: ")
+        # rep_T = threading.Thread(target=self.rep) # TODO test: rep()
+        # rep_T.start()
         
+        """
         if (choice == "y" or choice == "Y"):
             # msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} PUB_KEY::{self.PUB_KEY}" # DONE daha yapısal bir msg bulunmalı, json?
             
-            brdIP = "192.168.1.255"
+            brdIP = "255.255.255.255"
             broadcast_T = threading.Thread(target=self.broadcast,
-                                        args=(brdIP))
-    
+                                        args=(brdIP,))
             broadcast_T.start()
-
+        """
     def listenBroadcast(self):
         
         # broadcast mesajlarını dinleyip ilgili mesaja göre
         # başka fonksiyonları çağırır
         
+        print("[LISTENING] broadcast listening")
+
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.bind(self.HOST_ADDR)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        # s.bind(self.HOST_ADDR)
+        s.bind(('', self.PORT))
         
         while True:
             data, address = s.recvfrom(4096)
@@ -88,7 +104,8 @@ class Host:
             response = Messaging.toDict( MsgType.connectionOK,
                                         self.LOCALHOST,
                                         self.ID)
-            reponse = json.dumps(response)
+            
+            response = json.dumps(response)
             
             dataDict = json.loads(data)
             
@@ -97,20 +114,18 @@ class Host:
                 # DONE yapısal bir msg yöntemi geçildiğinde PUB_KEY ve IP de msg içinden ayrıştırılmalı
                 # duruma göre handleNewClient() gibi bir fn çağırılabilir
                 
-                print(f"[CONNECTION] {str(server)} requested to connect")
-                print(f"\tADDR: {dataDict["ADDR"]}")
-                print(f"\tID: {dataDict["ID"]}")
+                print(f"[CONNECTION] {str(address)} requested to connect")
+                print(f"\tADDR: {dataDict['ADDR']}")
+                print(f"\tID: {dataDict['ID']}")
                 
                 s.sendto(response.encode(self.FORMAT), address)
-                print(f"[SENT] {response[:16] + " ... " + response[-20:]} to {str(address)}")
+                print(f"[SENT] {response[:16]} ... {response[-20:]} to {str(address)}")
 
                 addNewDevice_T = threading.Thread(target=self.addNewDevice,
                                                     args=(address))
                 addNewDevice_T.start()
             
-            print("Do you want to add another device [y/n]: ") # FIXME şimdilik
-            
-            if(input() == "n"):
+            if(input("Do you want to add another device [y/n]: ") == "n"): # FIXME şimdilik
                 break
 
     def broadcast(self, brdIP):
@@ -125,7 +140,7 @@ class Host:
         
         # msg = "REQ::CONNECTION" # DONE şimdilik
         
-        msg = Messaging.toDict( MsgType.connectionREQ,
+        msg = self.messaging.toDict(MsgType.connectionREQ,
                                     self.LOCALHOST,
                                     self.ID)
         msg = json.dumps(msg)
@@ -148,8 +163,8 @@ class Host:
                 if dataDict["TYPE"] == "CONNECTION::OK":
                     
                     print(f"[CONNECTION] {str(server)} accepted to connect")
-                    print(f"\tADDR: {dataDict["ADDR"]}")
-                    print(f"\tID: {dataDict["ID"]}")
+                    print(f"\tADDR: {dataDict['ADDR']}")
+                    print(f"\tID: {dataDict['ID']}")
 
                     addNewDevice_T = threading.Thread(target=self.addNewDevice,
                                                         args=(server))
@@ -166,27 +181,26 @@ class Host:
             
         finally:
             s.close()
-        
+
     def getPubKey(self): # TODO test: getPubKey()
         
         # mkdir -p ./.config/ 
         # &&
         # ssh-keygen -t ecdsa -b 521 -f ./.config/host-key-ecdsa-521 -N ""  -C "HOSTNAME@LOCALHOST"
         
-        if os.path.isdir(HOST_KEY_DIR):
-            try:
-                keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
-            except FileNotFoundError:
-                if not (os.path.isdir(HOST_KEY_DIR)): # dizin oluşturulmamışsa
-                    subprocess.run(["mkdir", "-p", HOST_KEY_DIR])
-                
-                subprocess.run(["ssh-keygen",
-                        "-t", "ecdsa", "-b", "521"            # 521-bit ecdsa
-                        "-f", f"{CONFIG_DIR}{self.HOSTNAME}", # key location
-                        "-N", "",                             # empty passphrase
-                        "-C", f"\"{HOSTNAME}@{LOCALHOST}\""]) # host@localhost
+        try:
+            keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
+        except FileNotFoundError:
+            if not (os.path.isdir(HOST_KEY_DIR)): # dizin oluşturulmamışsa
+                subprocess.run(["mkdir", "-p", HOST_KEY_DIR]) # FIXME windows için çalışmıyor
+            
+            subprocess.run(["ssh-keygen",
+                    "-t", "ecdsa", "-b", "521"            # 521-bit ecdsa
+                    "-f", f"{CONFIG_DIR}{self.HOSTNAME}", # key location
+                    "-N", "",                             # empty passphrase
+                    "-C", f"\"{self.HOSTNAME}@{self.LOCALHOST}\""]) # host@localhost
 
-                keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
+            keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
         
         return keyFile.readlines()[0]
         
@@ -197,7 +211,7 @@ class Host:
             #  dosya oluştur & return PUB_KEY
 
         return "ABC123"
-    
+
     def addNewDevice(self, addr):
         
         # TODO aygıt knownDevices içinde mi? kontrol edilmeli
