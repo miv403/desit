@@ -25,7 +25,7 @@ class Host:
 
         self.LOCALHOST = self.getLocalIP()
 
-        self.PORT = 6161 # FIXME UDP broadcast port, 
+        self.PORT = 6161 # FIXME  bu sadece mDNS için, 
         self.HOST_ADDR = (self.LOCALHOST, self.PORT)
         self.FORMAT = "UTF-8"
         self.knownDevices = [] # class Device list
@@ -34,7 +34,7 @@ class Host:
         
         # self.PUB_KEY = self.getPubKey() # "alg KEY user@host" FIXME test: getPubKey
         #self.ID = self.PUB_KEY[-16:]    # ID PUB_KEY son 16 karakteri FIXME test: self.ID
-        self.ID = "9876A"
+        self.ID = "9876A" # FIXME geçici ID
         # TODO build or edit config file
 
     def start(self):
@@ -44,143 +44,8 @@ class Host:
         # print(f"LOCAL IP ADDRESS: {self.HOST_ADDR[0]}")
         # print(f"CURRENT GLOBAL PORT: {self.HOST_ADDR[1]}")
 
-        # GECICI 
-        # listenBroadcast_T = threading.Thread(target=self.listenBroadcast)
-        # listenBroadcast_T.start()
 
-        # ---------------------------------------------------------------#
-        print("[1]: listen")
-        print("[2]: send")
-        choice = input("? ")
-        match choice:
-            case "1":
-                thread = threading.Thread(target=self.listenBroadcast)
-            case "2":
-                brdIP = "255.255.255.255"
-                thread = threading.Thread( target=self.broadcast,
-                                                args=(brdIP,))
-        thread.start()
-        # ---------------------------------------------------------------#
 
-        # rep_T = threading.Thread(target=self.rep) # TODO test: rep()
-        # rep_T.start()
-        
-        """
-        if (choice == "y" or choice == "Y"):
-            # msg = f"REQ::CONNECTION ADDR::{self.LOCALHOST} PUB_KEY::{self.PUB_KEY}" # DONE daha yapısal bir msg bulunmalı, json?
-            
-            brdIP = "255.255.255.255"
-            broadcast_T = threading.Thread(target=self.broadcast,
-                                        args=(brdIP,))
-            broadcast_T.start()
-        """
-    def listenBroadcast(self):
-        
-        # broadcast mesajlarını dinleyip ilgili mesaja göre
-        # başka fonksiyonları çağırır
-        
-        print("[LISTENING] broadcast listening")
-
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        # s.bind(self.HOST_ADDR)
-        s.bind(('', self.PORT))
-        
-        while True:
-            data, address = s.recvfrom(4096)
-            data = str(data.decode(self.FORMAT))
-            
-            if DEBUG:
-                print("[DEBUG]")
-                print(f"\t[MSG] {len(data)}B from {str(address)}")
-                print(f"\t[DATA] {data[:24]} ...")
-
-            if address[0] == self.LOCALHOST:
-                # kendi broadcast msg görmezden geliniyor.
-                continue            
-
-            # RESPONSE = "OK::CONNECTION" # DONE şimdilik
-            
-            response = Messaging.toDict( MsgType.connectionOK,
-                                        self.LOCALHOST,
-                                        self.ID)
-            
-            response = json.dumps(response)
-            
-            dataDict = json.loads(data)
-            
-            # if data.startswith("REQ::CONNECTION"):
-            if dataDict["TYPE"] == "CONNECTION::REQ":
-                # DONE yapısal bir msg yöntemi geçildiğinde PUB_KEY ve IP de msg içinden ayrıştırılmalı
-                # duruma göre handleNewClient() gibi bir fn çağırılabilir
-                
-                print(f"[CONNECTION] {str(address)} requested to connect")
-                print(f"\tADDR: {dataDict['ADDR']}")
-                print(f"\tID: {dataDict['ID']}")
-                
-                s.sendto(response.encode(self.FORMAT), address)
-                print(f"[SENT] {response[:16]} ... {response[-20:]} to {str(address)}")
-
-                addNewDevice_T = threading.Thread(target=self.addNewDevice,
-                                                    args=(address))
-                addNewDevice_T.start()
-            
-            if(input("Do you want to add another device [y/n]: ") == "n"): # FIXME şimdilik
-                break
-
-    def broadcast(self, brdIP):
-        # broadcast adresine ilgili mesajı gönderecek fn
-        
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        s.settimeout(5)
-        
-        brdAddr = (brdIP, self.PORT)
-        
-        # msg = "REQ::CONNECTION" # DONE şimdilik
-        
-        msg = self.messaging.toDict(MsgType.connectionREQ,
-                                    self.LOCALHOST,
-                                    self.ID)
-        msg = json.dumps(msg)
-        
-        try:
-            while True:
-                # KILL bu tür mesajlaşma işlemleri \
-                #       zeromq kütüphanesi ile yapılmalı.
-
-                print("[SENDING]")
-                sent = s.sendto(msg.encode(self.FORMAT), brdAddr)
-                
-                print("[WAITING]")
-                data, server = s.recvfrom(4096)
-                data = data.decode(self.FORMAT) 
-                
-                dataDict = json.loads(data)
-                
-                # if data.decode(self.FORMAT).startswith("OK::CONNECTION"):
-                if dataDict["TYPE"] == "CONNECTION::OK":
-                    
-                    print(f"[CONNECTION] {str(server)} accepted to connect")
-                    print(f"\tADDR: {dataDict['ADDR']}")
-                    print(f"\tID: {dataDict['ID']}")
-
-                    addNewDevice_T = threading.Thread(target=self.addNewDevice,
-                                                        args=(server))
-                    addNewDevice_T.start()
-                    break
-                else:
-                    print(f"[FAILED] {str(server)} didn't confirm connection")
-                
-                print("[LOG] Trying again")
-
-        except TimeoutError as ex:
-            print("[BROADCAST] broadcast response timeout")
-            print(f"\t{ex}")
-            
-        finally:
-            s.close()
 
     def getPubKey(self): # TODO test: getPubKey()
         
