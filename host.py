@@ -27,20 +27,17 @@ class Host:
         self.HOSTNAME = socket.gethostname()
         self.LOCALHOST = self.getLocalIP()
 
+        self.config = Config(self.HOSTNAME) # config arayüzü
+
         self.PUB_KEY = self.getPubKey() # "alg KEY user@host" FIXME test: getPubKey
 
-        self.ID = self.PUB_KEY.split(" ")[1][-16:].upper() # ID PUB_KEY son 16 karakteri FIXME test: self.ID
-
-        # self.ID = "9876A" # FIXME geçici ID
-
+        self.ID = self.getIDFromConfig()
         # TODO build or edit config file
 
-        self.config = Config(self.HOSTNAME, self.ID) # config arayüzü
+        self.knownDevices = self.config.getKnownDevices() # class Device list
 
-        self.knownDevices = [] # class Device list
         self.jobQueue = queue.Queue()
         self.messaging = Messaging()
-        
 
     def start(self):
 
@@ -48,29 +45,27 @@ class Host:
         print(f"HOST: {self.HOSTNAME}@{self.LOCALHOST}")
         print(f"HOST ID: {self.ID}")
         
+        print("[START] Known devices:")
+        for dev in self.knownDevices:
+            print(f"\t{dev.getID()} @ {dev.getAddr()}")
+
         service = ServiceRegister(self.ID, 6161, self.LOCALHOST)
         service_T = threading.Thread(target=service.register)
         service_T.start()
         try:
-            while True:
+            while True: # TODO düzgün ve geçici bir menü
                 if input("do you want to add new device? [y/n]: ") == "y":
                     newDevID = input("enter ID: ")
-                    newDev = Device(newDevID)
-                    if newDev.ADDR != None:
-                        pass
-                    else:
-                        # if newDev not in knownDevices
-                        # then .append(newDev)
-                        # else
-                        # print( already added)
-                        pass
+                    self.addNewDevice(newDevID)
                 else:
                     break
         except KeyboardInterrupt:
             print("\n[STOP] KeyboardInterrupt closing")
-            service.stop = True # FIXME service.stop
+            service.stop = True # TODO service.stop daha düzgün bir kapama yöntemi bulunabilir
             exit()
-
+        
+        service.stop = True # TODO service.stop daha düzgün bir kapama yöntemi bulunabilir
+        
     def getLocalIP(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -96,11 +91,6 @@ class Host:
             if not os.path.isdir(HOST_KEY_DIR): # dizin oluşturulmamışsa
                 os.makedirs(HOST_KEY_DIR, exist_ok=True)
 
-                # if platform.system() == "Windows":
-                #     subprocess.run(["mkdir", HOST_KEY_DIR])
-                # else:
-                #     subprocess.run(["mkdir", "-p", HOST_KEY_DIR]) # FIXME windows için çalışmıyor
-
             subprocess.run(["ssh-keygen",
                     "-t", "ecdsa", "-b", "521",           # 521-bit ecdsa
                     "-f", f"{HOST_KEY_DIR}{self.HOSTNAME}", # key location
@@ -109,24 +99,34 @@ class Host:
 
             keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
         
-        
-        
         return keyFile.readline()
+
+    def getIDFromConfig(self): # DONE getID fonk.
         
-        # DONE getPUB_KEY(): public-private key oluşturma vs.
-        # if (kayıtlı anahtar dosyası)
-            # return dosya.PUB_KEY
-        # else: 
-            #  dosya oluştur & return PUB_KEY
+        if not self.config.getID():
+            id_ = self.PUB_KEY.split(" ")[1][-16:].upper() # ID PUB_KEY son 16 karakteri FIXME test: self.ID
+            self.config.setID(id_)
+            
+        return self.config.getID()
 
-        return "ABC123"
-
-    def addNewDevice(self, addr):
+    def addNewDevice(self, newID):
         
         # TODO aygıt knownDevices içinde mi? kontrol edilmeli
         
-        newDevice = Device(addr)
+        if newID == self.ID:
+            print(f"[DEVICE] you can't add your own device")
+            return
+        
+        knownIDs = [i for i in self.knownDevices if i.getID() == newID]
+        
+        if knownIDs != []:
+            print(f"[DEVICE] {newID} is already added.")
+            return
+        
+        newDevice = Device(newID)
+
         self.knownDevices.append(newDevice)
+        self.config.addNewDevice(newID)
 
     def rep(self): # TODO test: rep()
         context = zmq.Context()
@@ -144,7 +144,3 @@ class Host:
             if message.startswith("REQ::PUB_KEY"):
                 #  Send reply back to client
                 socket.send_string(self.getPubKey())
-
-    def getID(self): # FIXME getID fonk.
-        return self.ID
-

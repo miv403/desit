@@ -4,19 +4,23 @@ from services import ServiceDiscover
 
 class Device:
 
-    def __init__(self, _id):
-        self.ID = _id
-        self.ADDR = self.getAddr()
+    def __init__(self, id_):
+        self.ID = id_
+        self.ADDR = self.discoverAddr()
         # self.PUB_KEY = self.req(Reqs.PubKey) # TODO test: req()
 
-    def getAddr(self):
+    def discoverAddr(self):
         sd = ServiceDiscover(self.ID)
         addr = sd.discover()
         if not addr:
             print(f"[DEVICE] {self.ID} is offline")
         return addr
 
+    def getID(self):
+        return self.ID
 
+    def getAddr(self):
+        return self.ADDR
 
     def req(self, reqType):
         context = zmq.Context()

@@ -22,9 +22,9 @@ class Listener(ServiceListener):
         print(f"[SERVICE LISTENER] Service {name} added")
         
         if info:
+            addresses = ["%s" % socket.inet_ntoa(addr) 
+                            for addr in info.addresses]
             if DEBUG:
-                addresses = ["%s" % socket.inet_ntoa(addr) 
-                                for addr in info.addresses]
                 print(f"[DEBUG] Found service")
                 print(f"\tname: {name}")
                 print(f"\ttype: {type_}")
@@ -34,6 +34,7 @@ class Listener(ServiceListener):
 
             if info.server.split('.')[0] == self.ID:
                 # istenen ID eşleşirse bulunan servislere ekleniyor
+
                 self.foundServices.append( {
                     'name' : name,
                     'type' : type_,
