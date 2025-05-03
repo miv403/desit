@@ -1,40 +1,46 @@
-import socket
-import queue
-import sys
-import threading
-import zmq
-import time
-from device import Device
-import subprocess
-import os
 import json
+import os
+import platform
+import socket
+import subprocess
+import sys
+import queue
+import threading
+import time
+import zmq
+
+from config import Config
+from device import Device
 from messaging import Messaging, MsgType
 from services import ServiceRegister
 
 DEBUG = "--debug" in sys.argv
 
-CONFIG_DIR = "./.config/"
-KEYS_DIR = "./.config/keys/"
-HOST_KEY_DIR = "./.config/hostkey/"
+KEYS_DIR = "./.desit/keys/"
+CONFIG_DIR = "./.desit/"
+HOST_KEY_DIR = "./.desit/hostkey/"
 
 class Host:
 
     def __init__(self):
 
         self.HOSTNAME = socket.gethostname()
-        # self.LOCALHOST = socket.gethostbyname(self.HOSTNAME)
         self.LOCALHOST = self.getLocalIP()
-        # self.PORT = 6161 # FIXME  bu sadece mDNS için, 
-        # self.HOST_ADDR = (self.LOCALHOST, self.PORT)
-        # self.FORMAT = "UTF-8"
+
+        self.PUB_KEY = self.getPubKey() # "alg KEY user@host" FIXME test: getPubKey
+
+        self.ID = self.PUB_KEY.split(" ")[1][-16:].upper() # ID PUB_KEY son 16 karakteri FIXME test: self.ID
+
+        # self.ID = "9876A" # FIXME geçici ID
+
+        # TODO build or edit config file
+
+        self.config = Config(self.HOSTNAME, self.ID) # config arayüzü
+
         self.knownDevices = [] # class Device list
         self.jobQueue = queue.Queue()
         self.messaging = Messaging()
         
-        # self.PUB_KEY = self.getPubKey() # "alg KEY user@host" FIXME test: getPubKey
-        #self.ID = self.PUB_KEY[-16:]    # ID PUB_KEY son 16 karakteri FIXME test: self.ID
-        self.ID = "9876A" # FIXME geçici ID
-        # TODO build or edit config file
 
     def start(self):
 
@@ -61,7 +67,8 @@ class Host:
                 else:
                     break
         except KeyboardInterrupt:
-            print("\n KeyboardInterrupt closing")
+            print("\n[STOP] KeyboardInterrupt closing")
+            service.stop = True # FIXME service.stop
             exit()
 
     def getLocalIP(self):
@@ -85,18 +92,26 @@ class Host:
         try:
             keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
         except FileNotFoundError:
-            if not (os.path.isdir(HOST_KEY_DIR)): # dizin oluşturulmamışsa
-                subprocess.run(["mkdir", "-p", HOST_KEY_DIR]) # FIXME windows için çalışmıyor
-            
+
+            if not os.path.isdir(HOST_KEY_DIR): # dizin oluşturulmamışsa
+                os.makedirs(HOST_KEY_DIR, exist_ok=True)
+
+                # if platform.system() == "Windows":
+                #     subprocess.run(["mkdir", HOST_KEY_DIR])
+                # else:
+                #     subprocess.run(["mkdir", "-p", HOST_KEY_DIR]) # FIXME windows için çalışmıyor
+
             subprocess.run(["ssh-keygen",
-                    "-t", "ecdsa", "-b", "521"            # 521-bit ecdsa
-                    "-f", f"{CONFIG_DIR}{self.HOSTNAME}", # key location
+                    "-t", "ecdsa", "-b", "521",           # 521-bit ecdsa
+                    "-f", f"{HOST_KEY_DIR}{self.HOSTNAME}", # key location
                     "-N", "",                             # empty passphrase
                     "-C", f"\"{self.HOSTNAME}@{self.LOCALHOST}\""]) # host@localhost
 
             keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
         
-        return keyFile.readlines()[0]
+        
+        
+        return keyFile.readline()
         
         # DONE getPUB_KEY(): public-private key oluşturma vs.
         # if (kayıtlı anahtar dosyası)

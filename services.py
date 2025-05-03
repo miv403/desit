@@ -51,6 +51,8 @@ class Service:
         self.LOCALHOST = addr
         self.APP_NAME = "desit"
         self.serviceType = f"_{self.APP_NAME}._tcp.local."
+        
+        self.stop = False
 
 class ServiceRegister(Service):
     
@@ -76,13 +78,16 @@ class ServiceRegister(Service):
         
         try:
             while True:
+                if self.stop:
+                    break
                 time.sleep(0.1)
         except KeyboardInterrupt:
             pass
-        finally:
-            zc.unregister_service(ServiceInfo)
+        finally: # FIXME threading'de burası çalışmıyor
+            zc.unregister_service(serviceInfo)
             zc.close()
             print(f"[SERVICE] {self.serviceName} unregistered")
+
 
 class ServiceDiscover(Service):
 
@@ -99,7 +104,6 @@ class ServiceDiscover(Service):
 
         time.sleep(timeout)
         zc.close()
-        
 
         if listener.foundServices != []:
             if DEBUG:
