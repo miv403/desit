@@ -1,41 +1,70 @@
 import zmq
-from req_enum import Reqs
+
 from services import ServiceDiscover
+from messaging import Messaging, MsgType
 
 class Device:
 
-    def __init__(self, id_):
+    def __init__(self,
+                id_,                # self.ID
+                hostName,           # Host.HOSTNAME
+                hostID,             # Host.ID
+                hostPubKey,         # Host.PUB_KEY
+                devPubKey = None):  # self.PUB_KEY
+
         self.ID = id_
         self.ADDR = self.discoverAddr()
-        # self.PUB_KEY = self.req(Reqs.PubKey) # TODO test: req()
+        # self.ADDR = None
+        
+        self.messaging = Messaging(
+            hostName = hostName,
+            hostID = hostID,
+            devID = self.ID,
+            pubKey = hostPubKey
+        )
+        
+        if not devPubKey:
+            self.PUB_KEY = self.req(self.messaging.toDict(MsgType.reqPubKey)) # DONE test: req()
+            self.PUB_KEY =  self.PUB_KEY['PUB_KEY']
+        else:
+            self.PUB_KEY = devPubKey
+
+    def getID(self):
+        return self.ID
+    def getAddr(self):
+        return self.ADDR
+    def getPubKey(self):
+        return self.PUB_KEY
 
     def discoverAddr(self):
+        # ID ile IP adresi keşfi
+        
         sd = ServiceDiscover(self.ID)
         addr = sd.discover()
+
         if not addr:
             print(f"[DEVICE] {self.ID} is offline")
         return addr
 
-    def getID(self):
-        return self.ID
-
-    def getAddr(self):
-        return self.ADDR
-
-    def req(self, reqType):
+    def req(self, msgDict) -> dict:
+        # DONE msg type metot kullanıcısı tarafından belirlenecek
+        
+        # güncel adresi al
+        self.ADDR = self.discoverAddr()
+        
+        if not self.ADDR: # aygıt çevrim dışı ise isteği gerçekleştirme
+            print(f"[REQ] {self.ID} is offline")
+            return None
+        
         context = zmq.Context()
-
-        #  Socket to talk to server
-        print(f"[REQ] Requesting from {self.ADDR[0]}")
+        print(f"[REQ] Requesting from {self.ADDR} ID: {self.ID}")
         socket = context.socket(zmq.REQ)
-        socket.connect(f"tcp://{self.ADDR[0]}:6162") # TODO REP-REQ portu belirle
+        socket.connect(f"tcp://{self.ADDR}:6162") # DONE REP-REQ portu belirle
 
-        if reqType == Reqs.PubKey:
-            print(f"[REQ] Sending request for Reqs.{reqType}")
-            socket.send_string("REQ::PUB_KEY")
-
-        #  Get the reply.
-        message = socket.recv()
-        print(f"[REQ] Received reply from {self.ADDR[0]}: {message}")
+        socket.send_json(msgDict)
+        
+        message = socket.recv_json()
+        
+        print(f"[REQ] Received reply from {self.ADDR}: {message}")
         
         return message

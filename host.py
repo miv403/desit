@@ -1,6 +1,5 @@
 import json
 import os
-import platform
 import socket
 import subprocess
 import sys
@@ -16,8 +15,8 @@ from services import ServiceRegister
 
 DEBUG = "--debug" in sys.argv
 
-KEYS_DIR = "./.desit/keys/"
 CONFIG_DIR = "./.desit/"
+KEYS_DIR = "./.desit/keys/"
 HOST_KEY_DIR = "./.desit/hostkey/"
 
 class Host:
@@ -27,17 +26,24 @@ class Host:
         self.HOSTNAME = socket.gethostname()
         self.LOCALHOST = self.getLocalIP()
 
-        self.config = Config(self.HOSTNAME) # config arayüzü
 
         self.PUB_KEY = self.getPubKey() # "alg KEY user@host" FIXME test: getPubKey
 
+        self.config = Config(self.HOSTNAME, self.PUB_KEY) # config arayüzü
+
         self.ID = self.getIDFromConfig()
-        # TODO build or edit config file
+
+        # DONE build or edit config file
 
         self.knownDevices = self.config.getKnownDevices() # class Device list
 
+        self.messaging = Messaging( hostName = self.LOCALHOST,
+                                    hostID = self.ID,
+                                    pubKey = self.PUB_KEY) # DONE Host.messaging
+
         self.jobQueue = queue.Queue()
-        self.messaging = Messaging()
+        
+        self.STOP = False # FIXME threadleri durdurma 
 
     def start(self):
 
@@ -52,6 +58,10 @@ class Host:
         service = ServiceRegister(self.ID, 6161, self.LOCALHOST)
         service_T = threading.Thread(target=service.register)
         service_T.start()
+        
+        rep_T = threading.Thread(target=self.rep)
+        rep_T.start()
+        
         try:
             while True: # TODO düzgün ve geçici bir menü
                 if input("do you want to add new device? [y/n]: ") == "y":
@@ -62,10 +72,14 @@ class Host:
         except KeyboardInterrupt:
             print("\n[STOP] KeyboardInterrupt closing")
             service.stop = True # TODO service.stop daha düzgün bir kapama yöntemi bulunabilir
-            exit()
+            
+            self.STOP = True
+            sys.exit()
         
+        self.STOP = True # FIXME bu yöntem çalışmıyor
         service.stop = True # TODO service.stop daha düzgün bir kapama yöntemi bulunabilir
-        
+        sys.exit()
+
     def getLocalIP(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -78,7 +92,7 @@ class Host:
             s.close()
         return ip
 
-    def getPubKey(self): # TODO test: getPubKey()
+    def getPubKey(self): # DONE test: getPubKey()
         
         # mkdir -p ./.config/ 
         # &&
@@ -95,23 +109,28 @@ class Host:
                     "-t", "ecdsa", "-b", "521",           # 521-bit ecdsa
                     "-f", f"{HOST_KEY_DIR}{self.HOSTNAME}", # key location
                     "-N", "",                             # empty passphrase
-                    "-C", f"\"{self.HOSTNAME}@{self.LOCALHOST}\""]) # host@localhost
+                    "-C", f"{self.HOSTNAME}@{self.LOCALHOST}"]) # host@localhost
 
             keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
         
-        return keyFile.readline()
+        pubKey = keyFile.readline().rstrip('\n')
+        keyFile.close()
+        
+        return pubKey
 
     def getIDFromConfig(self): # DONE getID fonk.
         
-        if not self.config.getID():
+        if not self.config.getID(): # config'de ID None ise yeni
             id_ = self.PUB_KEY.split(" ")[1][-16:].upper() # ID PUB_KEY son 16 karakteri FIXME test: self.ID
             self.config.setID(id_)
             
         return self.config.getID()
 
-    def addNewDevice(self, newID):
+    def addNewDevice(self,
+                    newID,
+                    devPubKey = None):
         
-        # TODO aygıt knownDevices içinde mi? kontrol edilmeli
+        # DONE aygıt knownDevices içinde mi? kontrol edilmeli
         
         if newID == self.ID:
             print(f"[DEVICE] you can't add your own device")
@@ -123,24 +142,42 @@ class Host:
             print(f"[DEVICE] {newID} is already added.")
             return
         
-        newDevice = Device(newID)
+        newDevice = Device( newID,
+                            self.HOSTNAME,
+                            self.ID,
+                            self.PUB_KEY,
+                            devPubKey)
 
         self.knownDevices.append(newDevice)
-        self.config.addNewDevice(newID)
+        self.config.addNewDevice(newDevice)
 
-    def rep(self): # TODO test: rep()
+    def rep(self): # DONE test: rep()
         context = zmq.Context()
         socket = context.socket(zmq.REP)
-        socket.bind("tcp://*:6162") # DONE REP-REQ portu belirle
+        socket.bind(f"tcp://{self.LOCALHOST}:6162") # DONE REP-REQ portu belirle
 
-        while True:
+        while not self.STOP:
             #  Wait for next request from client
             message = socket.recv()
-            print(f"Received request: {message}")
 
             #  Do some 'work'
             time.sleep(1)
 
-            if message.startswith("REQ::PUB_KEY"):
+            msgDict = json.loads(message)
+            print(f"[REP] Received request: {msgDict['TYPE']} from {msgDict['FROM']}")
+            
+            #if message.startswith("REQ::PUB_KEY"):
+            if msgDict['TYPE'] == "REQ::PUB_KEY":
                 #  Send reply back to client
-                socket.send_string(self.getPubKey())
+                
+                # reply with REP::PUB_KEY
+                replyDict = self.messaging.toDict(MsgType.repPubKey)
+                replyDict['TO'] = msgDict['FROM']
+                socket.send_json(replyDict)
+                
+                self.addNewDevice(msgDict['FROM'], msgDict['PUB_KEY'])
+                
+                # addNewDevice_T = threading.Thread(target=self.addNewDevice,
+                #                                 args=[msgDict['FROM'],
+                #                                     msgDict['PUB_KEY'],])
+                # addNewDevice_T.start()
