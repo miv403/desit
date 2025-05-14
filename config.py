@@ -90,6 +90,8 @@ class Config:
 
         json.dump(self._config, configFile)
         configFile.close()
+
+        print(f"[CONFIG] {newID} succesfully added to known devices")
     
     def getKnownDevices(self):
 
