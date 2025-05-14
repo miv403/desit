@@ -42,8 +42,6 @@ class Host:
                                     pubKey = self.PUB_KEY) # DONE Host.messaging
 
         self.jobQueue = queue.Queue()
-        
-        self.STOP = False # FIXME threadleri durdurma 
 
     def start(self):
 
@@ -55,30 +53,14 @@ class Host:
         for dev in self.knownDevices:
             print(f"\t{dev.getID()} @ {dev.getAddr()}")
 
-        service = ServiceRegister(self.ID, 6161, self.LOCALHOST)
-        service_T = threading.Thread(target=service.register)
+        self.service = ServiceRegister(self.ID, 6161, self.LOCALHOST)
+        service_T = threading.Thread(target=self.service.register)
         service_T.start()
         
         rep_T = threading.Thread(target=self.rep)
+        rep_T.daemon = True
         rep_T.start()
-        
-        try:
-            while True: # TODO düzgün ve geçici bir menü
-                if input("do you want to add new device? [y/n]: ") == "y":
-                    newDevID = input("enter ID: ")
-                    self.addNewDevice(newDevID)
-                else:
-                    break
-        except KeyboardInterrupt:
-            print("\n[STOP] KeyboardInterrupt closing")
-            service.stop = True # TODO service.stop daha düzgün bir kapama yöntemi bulunabilir
-            
-            self.STOP = True
-            sys.exit()
-        
-        self.STOP = True # FIXME bu yöntem çalışmıyor
-        service.stop = True # TODO service.stop daha düzgün bir kapama yöntemi bulunabilir
-        sys.exit()
+
 
     def getLocalIP(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -150,13 +132,15 @@ class Host:
 
         self.knownDevices.append(newDevice)
         self.config.addNewDevice(newDevice)
+        
+        print(f"[DEVICE] {newID} succesfully added to known devices")
 
     def rep(self): # DONE test: rep()
         context = zmq.Context()
         socket = context.socket(zmq.REP)
         socket.bind(f"tcp://{self.LOCALHOST}:6162") # DONE REP-REQ portu belirle
-
-        while not self.STOP:
+            
+        while True:
             #  Wait for next request from client
             message = socket.recv()
 
@@ -176,8 +160,4 @@ class Host:
                 socket.send_json(replyDict)
                 
                 self.addNewDevice(msgDict['FROM'], msgDict['PUB_KEY'])
-                
-                # addNewDevice_T = threading.Thread(target=self.addNewDevice,
-                #                                 args=[msgDict['FROM'],
-                #                                     msgDict['PUB_KEY'],])
-                # addNewDevice_T.start()
+
