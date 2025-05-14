@@ -13,8 +13,8 @@ class Device:
                 devPubKey = None):  # self.PUB_KEY
 
         self.ID = id_
-        self.ADDR = self.discoverAddr()
-        # self.ADDR = None
+        # self.ADDR = self.discoverAddr()
+        self.ADDR = None
         
         self.messaging = Messaging(
             hostName = hostName,
@@ -24,7 +24,11 @@ class Device:
         )
         
         if not devPubKey:
-            self.PUB_KEY = self.req(self.messaging.toDict(MsgType.reqPubKey)) # DONE test: req()
+            PUB_KEY = self.req(self.messaging.toDict(MsgType.reqPubKey)) # DONE test: req()
+            if not PUB_KEY:
+                self.PUB_KEY = None
+                return
+
             self.PUB_KEY =  self.PUB_KEY['PUB_KEY']
         else:
             self.PUB_KEY = devPubKey
