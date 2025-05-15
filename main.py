@@ -12,20 +12,29 @@ def main():
         host = Host()
         host.start()
         while True: # TODO düzgün ve geçici bir menü
-            if input("do you want to add new device? [y/n]: ") == "y":
+            
+            printMenu()
+            choice = input("? ")
+            
+            if choice == "1":
                 newDevID = input("enter ID: ")
                 host.addNewDevice(newDevID)
-            else:
+            elif choice == "2":
+                print("file path") # geçici
+                pass
+            elif choice == "3": # exit
                 break
-    except KeyboardInterrupt:
-        print("\n[STOP] KeyboardInterrupt closing")
+    except Exception as ex:
+        print(f"\n[STOP] {ex} closing")
         host.service.stop = True
     finally:
         print("\n[STOP] Finally closing")
         host.service.stop = True
-        
-    host.service.stop = True
 
+def printMenu():
+    print("[1] Add new device")
+    print("[2] Add file")
+    print("[3] Exit")
 
 if __name__ == "__main__":
     main()
