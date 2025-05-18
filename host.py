@@ -42,7 +42,7 @@ class Host:
                                     pubKey = self.PUB_KEY) # DONE Host.messaging
 
         self.jobQueue = queue.Queue()
-
+        self.fileManager = File() # file manager arayüzü
     def start(self):
 
         print(f"WELCOME!")
@@ -50,7 +50,7 @@ class Host:
         print(f"HOST ID: {self.ID}")
         
         print("[START] Known devices:")
-        for dev in self.knownDevices:
+        for dev in self.knownDevices:#cihazın kimliğini ve adresini yazdırır.
             print(f"\t{dev.getID()} @ {dev.getAddr()}")
 
         self.service = ServiceRegister(self.ID, 6161, self.LOCALHOST)
@@ -62,43 +62,46 @@ class Host:
         rep_T.start()
 
 
-    def getLocalIP(self):
+    def getLocalIP(self):#Gerçek bağlantı kurmadan IP'yi tespit eder. 
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             s.connect(('10.255.255.255', 1))
             # gerçekten ulaşılabilir bir adres olması gerekmiyor
-            ip = s.getsockname()[0]
-        except Exception:
+            ip = s.getsockname()[0] # Bağlantının yerel ucundaki IP adresini verir 
+        except Exception:# bağlantı kurma sırasında hata olursa geri dönüş olarak localhost (127.0.0.1) verilir.
+
+
             ip = '127.0.0.1'
         finally:
-            s.close()
-        return ip
+            s.close()#Her durumda soket kapatılır — sistem kaynağı boşa harcanmasın diye.
+        return ip #Sonuç olarak elde edilen IP adresi döndürülür.
 
-    def getPubKey(self): # DONE test: getPubKey()
+
+    def getPubKey(self): # DONE test: getPubKey() 
         
         # mkdir -p ./.config/ 
         # &&
         # ssh-keygen -t ecdsa -b 521 -f ./.config/host-key-ecdsa-521 -N ""  -C "HOSTNAME@LOCALHOST"
         
-        try:
-            keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
+        try:#ECDSA tabanlı SSH açık anahtarını (public key) üretmek ve okumak için kullanılır.
+            keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")#Anahtarın .pub uzantılı açık anahtar dosyasını okumaya çalışır.
         except FileNotFoundError:
 
             if not os.path.isdir(HOST_KEY_DIR): # dizin oluşturulmamışsa
-                os.makedirs(HOST_KEY_DIR, exist_ok=True)
+                os.makedirs(HOST_KEY_DIR, exist_ok=True)#Anahtar dizini (.config/ gibi) yoksa, oluşturulur.
 
             subprocess.run(["ssh-keygen",
-                    "-t", "ecdsa", "-b", "521",           # 521-bit ecdsa
+                    "-t", "ecdsa", "-b", "521",#ECDSA algoritmasıyla 521 bitlik bir SSH anahtar çifti oluşturur.           # 521-bit ecdsa
                     "-f", f"{HOST_KEY_DIR}{self.HOSTNAME}", # key location
-                    "-N", "",                             # empty passphrase
+                    "-N", "", #Parola yoktur (-N "")                            # empty passphrase
                     "-C", f"{self.HOSTNAME}@{self.LOCALHOST}"]) # host@localhost
 
-            keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
+            keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")# Anahtar üretildikten sonra .pub dosyası tekrar açılır.
         
         pubKey = keyFile.readline().rstrip('\n')
         keyFile.close()
         
-        return pubKey
+        return pubKey #
 
     def getIDFromConfig(self): # DONE getID fonk.
         
@@ -110,8 +113,8 @@ class Host:
 
     def addNewDevice(self,
                     newID,
-                    devPubKey = None):
-        
+                    devPubKey = None):#newID: Eklenmek istenen cihazın kimliği (ID’si),
+                    #devPubKey: (İsteğe bağlı) o cihazın public key’i (açık anahtarı). Yoksa None.
         # DONE aygıt knownDevices içinde mi? kontrol edilmeli
         
         if newID == self.ID:
@@ -136,7 +139,7 @@ class Host:
         print(f"[DEVICE] {newID} succesfully added to known devices")
 
     def rep(self): # DONE test: rep()
-        context = zmq.Context()
+        context = zmq.Context()# istemcilerden gelen istekleri (request) dinler ve uygun cevapları (reply) gönderir.
         socket = context.socket(zmq.REP)
         socket.bind(f"tcp://{self.LOCALHOST}:6162") # DONE REP-REQ portu belirle
             
@@ -161,3 +164,51 @@ class Host:
                 
                 self.addNewDevice(msgDict['FROM'], msgDict['PUB_KEY'])
 
+    def add_file_via_menu(self):
+        available_files = self.fileManager.listAvailableFiles()
+        print("Seçilebilir dosyalar:")
+        for i, fname in enumerate(available_files):
+            print(f"{i}: {fname}")
+
+        file_index = int(input("Dosya numarasını seçin: "))
+        filename = available_files[file_index]
+
+        # Örnek cihaz ID'leri
+        known_devices = ["DEV_ID-0", "DEV_ID-1", "DEV_ID-2"]
+        print("Seçilebilir cihazlar:")
+        for i, dev in enumerate(known_devices):
+            print(f"{i}: {dev}")
+
+        selected_indices = input("Cihaz numaralarını virgülle girin (örn. 0,2): ")
+        selected_ids = [known_devices[int(i)] for i in selected_indices.split(",")]
+
+        success = self.fileManager.addFile(filename, selected_ids)
+        if success:
+            print("Dosya başarıyla kaydedildi.")
+        else:
+            print("Dosya kaydı başarısız.")
+def add_file_via_menu(self):
+    available_files = self.fileManager.listAvailableFiles()
+    print("Seçilebilir dosyalar:")
+    for i, fname in enumerate(available_files):
+        print(f"{i}: {fname}")
+
+    file_index = int(input("Dosya numarasını seçin: "))
+    filename = available_files[file_index]
+
+'''
+    # Gerçek cihaz ID'lerini çek
+    known_devices = self.deviceManager.listKnownDevices()  # <-- bunu kendin implement etmelisin
+    print("Seçilebilir cihazlar:")
+    for i, dev in enumerate(known_devices):
+        print(f"{i}: {dev}")
+
+    selected_indices = input("Cihaz numaralarını virgülle girin (örn. 0,2): ")
+    selected_ids = [known_devices[int(i)] for i in selected_indices.split(",")]
+
+    success = self.fileManager.addFile(filename, selected_ids)
+    if success:
+        print("Dosya başarıyla kaydedildi.")
+    else:
+        print("Dosya kaydı başarısız.")
+'''
