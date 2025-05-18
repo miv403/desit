@@ -7,7 +7,7 @@ class Device:
 
     def __init__(self,
                 id_,                # self.ID
-                hostName,           # Host.HOSTNAME
+                #hostName,           # Host.HOSTNAME
                 hostID,             # Host.ID
                 hostPubKey,         # Host.PUB_KEY
                 devPubKey = None):  # self.PUB_KEY
@@ -16,20 +16,22 @@ class Device:
         # self.ADDR = self.discoverAddr()
         self.ADDR = None
         
+        
         self.messaging = Messaging(
-            hostName = hostName,
+            # hostName = hostName,
             hostID = hostID,
             devID = self.ID,
             pubKey = hostPubKey
         )
         
         if not devPubKey:
-            PUB_KEY = self.req(self.messaging.toDict(MsgType.reqPubKey)) # DONE test: req()
-            if not PUB_KEY:
+            request = self.req(self.messaging.toDict(MsgType.reqPubKey)) # DONE test: req()
+            if not request:
                 self.PUB_KEY = None
                 return
 
-            self.PUB_KEY =  self.PUB_KEY['PUB_KEY']
+            self.PUB_KEY =  request['PUB_KEY']
+            self.USERNAME = request['USERNAME'] # TODO test: USERNAME
         else:
             self.PUB_KEY = devPubKey
 

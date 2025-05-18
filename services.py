@@ -7,8 +7,8 @@ DEBUG = "--debug" in sys.argv
 
 class Listener(ServiceListener):
 
-    def __init__(self, _id):
-        self.ID = _id
+    def __init__(self, id_):
+        self.ID = id_
         self.foundServices = []
     
     def update_service(self, zc, type_, name):
@@ -32,6 +32,8 @@ class Listener(ServiceListener):
                 print(f"\tport: {info.port}")
                 print(f"\tserver: {info.server}")
 
+            info.server = str(info.server) # pyright server = None diye hata veriyo
+            
             if info.server.split('.')[0] == self.ID:
                 # istenen ID eşleşirse bulunan servislere ekleniyor
 
@@ -52,7 +54,7 @@ class Service:
         self.LOCALHOST = addr
         self.APP_NAME = "desit"
         self.serviceType = f"_{self.APP_NAME}._tcp.local."
-        
+
         self.stop = False
 
 class ServiceRegister(Service):

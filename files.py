@@ -3,6 +3,7 @@ import json
 from constants import Const
 
 class Files:
+
     def __init__(self):
         self.files = self._loadFileDB()
 

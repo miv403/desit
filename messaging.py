@@ -1,4 +1,5 @@
 from enum import Enum
+from constants import Const
 
 class MsgType(Enum):
     
@@ -11,12 +12,12 @@ class MsgType(Enum):
 
 class Messaging:
     
-    def __init__(self, hostName = None, # Host.HOSTNAME
+    def __init__(self,  # hostName = None, # Host.HOSTNAME
                         hostID = None,  # Host.ID
                         devID = None,   # Device.ID
                         pubKey = None): # Host.PUB_KEY
 
-        self.HOSTNAME = hostName
+        # self.HOSTNAME = hostName
         self.HOST_ID = hostID
         self.DEV_ID = devID
         self.PUB_KEY = pubKey # hostPubKey
@@ -29,14 +30,10 @@ class Messaging:
                     "TYPE" : None,
                     "TO" : self.DEV_ID,
                     "FROM" : self.HOST_ID,
-                    "HOSTNAME" : self.HOSTNAME,
+                    "HOSTNAME" : Const.HOSTNAME,
+                    "USERNAME" : Const.USERNAME,
                     "PUB_KEY" : self.PUB_KEY
                 }
-
-        # if type == MsgType.connectionREQ:
-        #     msgDict["TYPE"] = "CONNECTION::REQ"
-        # elif type == MsgType.connectionOK:
-        #     msgDict["TYPE"] = "CONNECTION::OK"
 
         if type == MsgType.hello:
             msgDict['TYPE'] = "HELLO"
