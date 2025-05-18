@@ -12,7 +12,7 @@ from config import Config
 from device import Device
 from messaging import Messaging, MsgType
 from services import ServiceRegister
-from file import Files
+from files import Files
 
 DEBUG = "--debug" in sys.argv
 
