@@ -12,6 +12,7 @@ from config import Config
 from device import Device
 from messaging import Messaging, MsgType
 from services import ServiceRegister
+from file import Files
 
 DEBUG = "--debug" in sys.argv
 
@@ -25,7 +26,6 @@ class Host:
 
         self.HOSTNAME = socket.gethostname()
         self.LOCALHOST = self.getLocalIP()
-
 
         self.PUB_KEY = self.getPubKey() # "alg KEY user@host" FIXME test: getPubKey
 
@@ -42,7 +42,8 @@ class Host:
                                     pubKey = self.PUB_KEY) # DONE Host.messaging
 
         self.jobQueue = queue.Queue()
-        self.fileManager = File() # file manager arayüzü
+        self.fileManager = Files() # file manager arayüzü
+
     def start(self):
 
         print(f"WELCOME!")
@@ -61,7 +62,6 @@ class Host:
         rep_T.daemon = True
         rep_T.start()
 
-
     def getLocalIP(self):#Gerçek bağlantı kurmadan IP'yi tespit eder. 
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -76,7 +76,6 @@ class Host:
             s.close()#Her durumda soket kapatılır — sistem kaynağı boşa harcanmasın diye.
         return ip #Sonuç olarak elde edilen IP adresi döndürülür.
 
-
     def getPubKey(self): # DONE test: getPubKey() 
         
         # mkdir -p ./.config/ 
@@ -88,15 +87,17 @@ class Host:
         except FileNotFoundError:
 
             if not os.path.isdir(HOST_KEY_DIR): # dizin oluşturulmamışsa
-                os.makedirs(HOST_KEY_DIR, exist_ok=True)#Anahtar dizini (.config/ gibi) yoksa, oluşturulur.
+                os.makedirs(HOST_KEY_DIR, exist_ok=True) 
+                # Anahtar dizini (.config/ gibi) yoksa, oluşturulur.
 
             subprocess.run(["ssh-keygen",
-                    "-t", "ecdsa", "-b", "521",#ECDSA algoritmasıyla 521 bitlik bir SSH anahtar çifti oluşturur.           # 521-bit ecdsa
+                    "-t", "ecdsa", "-b", "521", # 521-bit ecdsa
                     "-f", f"{HOST_KEY_DIR}{self.HOSTNAME}", # key location
-                    "-N", "", #Parola yoktur (-N "")                            # empty passphrase
+                    "-N", "", # empty passphrase
                     "-C", f"{self.HOSTNAME}@{self.LOCALHOST}"]) # host@localhost
 
-            keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")# Anahtar üretildikten sonra .pub dosyası tekrar açılır.
+            keyFile = open(f"{HOST_KEY_DIR}{self.HOSTNAME}.pub", "r")
+            # Anahtar üretildikten sonra .pub dosyası tekrar açılır.
         
         pubKey = keyFile.readline().rstrip('\n')
         keyFile.close()
@@ -113,8 +114,10 @@ class Host:
 
     def addNewDevice(self,
                     newID,
-                    devPubKey = None):#newID: Eklenmek istenen cihazın kimliği (ID’si),
-                    #devPubKey: (İsteğe bağlı) o cihazın public key’i (açık anahtarı). Yoksa None.
+                    devPubKey = None):
+                    
+                    # newID: Eklenmek istenen cihazın kimliği (ID’si),
+                    # devPubKey: (İsteğe bağlı) o cihazın public key’i (açık anahtarı). Yoksa None.
         # DONE aygıt knownDevices içinde mi? kontrol edilmeli
         
         if newID == self.ID:
@@ -164,29 +167,33 @@ class Host:
                 
                 self.addNewDevice(msgDict['FROM'], msgDict['PUB_KEY'])
 
-    def add_file_via_menu(self):
+    def addFileViaMenu(self):
+        
         available_files = self.fileManager.listAvailableFiles()
+
         print("Seçilebilir dosyalar:")
-        for i, fname in enumerate(available_files):
-            print(f"{i}: {fname}")
+        for i, fName in enumerate(available_files):
+            print(f"{i}: {fName}")
 
         file_index = int(input("Dosya numarasını seçin: "))
         filename = available_files[file_index]
 
         # Örnek cihaz ID'leri
-        known_devices = ["DEV_ID-0", "DEV_ID-1", "DEV_ID-2"]
+        knownDevicesList = ["DEV_ID-0", "DEV_ID-1", "DEV_ID-2"]
+        knownDevicesList = [devID.getID() for devID in self.knownDevices]
         print("Seçilebilir cihazlar:")
-        for i, dev in enumerate(known_devices):
+        for i, dev in enumerate(knownDevicesList):
             print(f"{i}: {dev}")
 
         selected_indices = input("Cihaz numaralarını virgülle girin (örn. 0,2): ")
-        selected_ids = [known_devices[int(i)] for i in selected_indices.split(",")]
+        selected_ids = [knownDevicesList[int(i)] for i in selected_indices.split(",")]
 
         success = self.fileManager.addFile(filename, selected_ids)
         if success:
-            print("Dosya başarıyla kaydedildi.")
+            print("[FILE] File added successfully.")
         else:
-            print("Dosya kaydı başarısız.")
+            print("[FILE] File cannot be added.")
+
 def add_file_via_menu(self):
     available_files = self.fileManager.listAvailableFiles()
     print("Seçilebilir dosyalar:")

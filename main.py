@@ -1,7 +1,8 @@
 import sys
 from host import Host
-
+import time
 DEBUG = "--debug" in sys.argv
+
 
 def main():
 
@@ -11,8 +12,8 @@ def main():
     try:
         host = Host()
         host.start()
+        time.sleep(0.2)
         while True: # TODO düzgün ve geçici bir menü
-            
             printMenu()
             choice = input("? ")
             
@@ -20,11 +21,11 @@ def main():
                 newDevID = input("enter ID: ")
                 host.addNewDevice(newDevID)
             elif choice == "2":
-                print("file path") # geçici
-                pass
+                host.addFileViaMenu()
             elif choice == "3": # exit
                 break
-    except Exception as ex:
+    # except Exception as ex:
+    except KeyboardInterrupt as ex:
         print(f"\n[STOP] {ex} closing")
         host.service.stop = True
     finally:
@@ -35,6 +36,8 @@ def printMenu():
     print("[1] Add new device")
     print("[2] Add file")
     print("[3] Exit")
+
+
 
 if __name__ == "__main__":
     main()
