@@ -2,8 +2,8 @@ import os
 import sys
 import json
 
-from device import Device
-from constants import Const
+from lib.device import Device
+from lib.constants import Const
 
 # CONFIG_DIR = Const.CONFIG_DIR
 # CFG_EXT = Const.CFG_EXT

@@ -1,8 +1,8 @@
 import zmq
 
-from services import ServiceDiscover
-from messaging import Messaging, MsgType
-from constants import Const
+from lib.services import ServiceDiscover
+from lib.messaging import Messaging, MsgType
+from lib.constants import Const
 
 class Device:
 

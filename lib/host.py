@@ -8,13 +8,13 @@ import threading
 import time
 import zmq
 
-from config import Config
-from device import Device
-from messaging import Messaging, MsgType
-from services import ServiceRegister
-from files import Files
-from constants import Const
-from transfer import Transfer
+from lib.config import Config
+from lib.device import Device
+from lib.messaging import Messaging, MsgType
+from lib.services import ServiceRegister
+from lib.files import Files
+from lib.constants import Const
+from lib.transfer import Transfer
 
 # DEBUG = "--debug" in sys.argv
 

@@ -1,6 +1,6 @@
 import subprocess
 
-from constants import Const
+from lib.constants import Const
 
 HOST_KEY_DIR_TEMP = f"{Const.HOME_DIR}/proje/src/.desit/hostkey/"
 

@@ -19,3 +19,5 @@ class Const: # TODO implement global constants
     # HOST_PUB_KEY = Host.getPubKey(self)
     # LOCALHOST = Host.getLocalIP()
     USERNAME = getpass.getuser()
+
+    CWD = os.path.dirname(os.path.abspath(__file__)) # TODO implement it

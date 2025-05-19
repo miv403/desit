@@ -1,5 +1,5 @@
 from enum import Enum
-from constants import Const
+from lib.constants import Const
 
 class MsgType(Enum):
     

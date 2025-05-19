@@ -1,7 +1,7 @@
 import json
 import os
 
-from constants import Const
+from lib.constants import Const
 
 class File:
     def __init__(self, path, devIDs):

@@ -1,5 +1,5 @@
 import sys
-from host import Host
+from lib.host import Host
 import time
 DEBUG = "--debug" in sys.argv
 
@@ -39,8 +39,6 @@ def printMenu():
     print("[2] Add file")
     print("[3] Send Files")
     print("[4] Exit")
-
-
 
 if __name__ == "__main__":
     main()
