@@ -22,7 +22,9 @@ def main():
                 host.addNewDevice(newDevID)
             elif choice == "2":
                 host.addFileViaMenu()
-            elif choice == "3": # exit
+            elif choice == "3": # sendAll
+                host.sendAll()
+            elif choice == "4": # exit
                 break
     # except Exception as ex:
     except KeyboardInterrupt as ex:
@@ -35,7 +37,8 @@ def main():
 def printMenu():
     print("[1] Add new device")
     print("[2] Add file")
-    print("[3] Exit")
+    print("[3] Send Files")
+    print("[4] Exit")
 
 
 

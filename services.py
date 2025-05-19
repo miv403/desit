@@ -15,7 +15,7 @@ class Listener(ServiceListener):
         print(f"[SERVICE LISTENER] {name} updated")
     def remove_service(self, zc, type_, name): # program akışında çalışmıyor
         #if self.foundServices and self.foundServices['name'] == name:
-        print(f"[SERVICE LISTENER] {name} was requested to be removed [FIX] {__name__}:{sys._getframe(1).f_lineno}")
+        print(f"[SERVICE LISTENER] {name} was requested to be removed [FIX] Listener::remove_service")
 
     def add_service(self, zc, type_, name):
         info = zc.get_service_info(type_, name)
@@ -24,13 +24,13 @@ class Listener(ServiceListener):
         if info:
             addresses = ["%s" % socket.inet_ntoa(addr) 
                             for addr in info.addresses]
-            if DEBUG:
-                print(f"[DEBUG] Found service")
-                print(f"\tname: {name}")
-                print(f"\ttype: {type_}")
-                print(f"\taddresses: {addresses}")
-                print(f"\tport: {info.port}")
-                print(f"\tserver: {info.server}")
+            # if DEBUG:
+            #     print(f"[DEBUG] Found service")
+            #     print(f"\tname: {name}")
+            #     print(f"\ttype: {type_}")
+            #     print(f"\taddresses: {addresses}")
+            #     print(f"\tport: {info.port}")
+            #     print(f"\tserver: {info.server}")
 
             info.server = str(info.server) # pyright server = None diye hata veriyo
             
@@ -91,7 +91,6 @@ class ServiceRegister(Service):
             zc.close()
             print(f"[SERVICE] {self.serviceName} unregistered")
 
-
 class ServiceDiscover(Service):
 
     def discover(self, timeout = 5):
@@ -110,7 +109,7 @@ class ServiceDiscover(Service):
 
         if listener.foundServices != []:
             if DEBUG:
-                self.servicePrint(listener.foundServices)
+            #     self.servicePrint(listener.foundServices)
                 print(f"[DEBUG] return {listener.foundServices[0]['addresses'][0]}")
             return listener.foundServices[0]['addresses'][0] # bulunan ID için IP adresi döndürülür
         else:

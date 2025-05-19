@@ -14,6 +14,7 @@ from messaging import Messaging, MsgType
 from services import ServiceRegister
 from files import Files
 from constants import Const
+from transfer import Transfer
 
 # DEBUG = "--debug" in sys.argv
 
@@ -29,13 +30,11 @@ class Host:
         
         self.LOCALHOST = self.getLocalIP()
 
-        self.PUB_KEY = self.getPubKey() # "alg KEY user@host" FIXME test: getPubKey
+        self.PUB_KEY = self.getPubKey() # "alg KEY host@addr" FIXME test: getPubKey
 
         self.config = Config(self.PUB_KEY) # config arayüzü
 
         self.ID = self.getIDFromConfig()
-
-        # DONE build or edit config file
 
         self.knownDevices = self.config.getKnownDevices() # class Device list
 
@@ -45,7 +44,8 @@ class Host:
                                     pubKey = self.PUB_KEY) # DONE Host.messaging
 
         self.jobQueue = queue.Queue()
-        self.fileManager = Files() # file manager arayüzü
+        self.files = Files() # file manager arayüzü
+        self.transfer = Transfer()
 
     def start(self):
 
@@ -119,7 +119,8 @@ class Host:
 
     def addNewDevice(self,
                     newID,
-                    devPubKey = None):
+                    devPubKey = None,
+                    username = None):
                     
                     # newID: Eklenmek istenen cihazın kimliği (ID’si),
                     # devPubKey: (İsteğe bağlı) o cihazın public key’i (açık anahtarı). Yoksa None.
@@ -139,7 +140,8 @@ class Host:
                             #self.HOSTNAME,
                             self.ID,
                             self.PUB_KEY,
-                            devPubKey)
+                            devPubKey,
+                            username)
 
         self.knownDevices.append(newDevice)
         self.config.addNewDevice(newDevice)
@@ -170,31 +172,39 @@ class Host:
                 replyDict['TO'] = msgDict['FROM']
                 socket.send_json(replyDict)
                 
-                self.addNewDevice(msgDict['FROM'], msgDict['PUB_KEY'])
+                self.addNewDevice(msgDict['FROM'], msgDict['PUB_KEY'], msgDict['USERNAME'])
 
     def addFileViaMenu(self):
         
-        available_files = self.fileManager.listAvailableFiles()
+        available_files = self.files.listAvailableFiles()
 
-        print("Seçilebilir dosyalar:")
+        print("Available Files:")
         for i, fName in enumerate(available_files):
             print(f"{i}: {fName}")
 
-        file_index = int(input("Dosya numarasını seçin: "))
+        file_index = int(input("Select file: "))
         filename = available_files[file_index]
 
         # Örnek cihaz ID'leri
         knownDevicesList = [devID.getID() for devID in self.knownDevices]
-        print("Seçilebilir cihazlar:")
+        print("Devices:")
         for i, dev in enumerate(knownDevicesList):
             print(f"{i}: {dev}")
 
-        selected_indices = input("Cihaz numaralarını virgülle girin (örn. 0,2): ") # FIXME dosya ekleme UI
+        selected_indices = input("Select devices (ex. 0,2): ") # FIXME dosya ekleme UI
         selected_ids = [knownDevicesList[int(i)] for i in selected_indices.split(",")]
 
-        success = self.fileManager.addFile(filename, selected_ids)
+        success = self.files.addFile(filename, selected_ids)
         if success:
             print("[FILE] File added successfully.")
         else:
             print("[FILE] File cannot be added.")
 
+    def sendAll(self):
+        
+        files = self.files.getFiles()
+        
+        for f in files:
+            IDs = f.getDevIDs()
+            ds = [d for d in self.knownDevices if d.getID() in IDs]
+            self.transfer.send(f, ds)

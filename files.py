@@ -1,11 +1,24 @@
-import os
 import json
+import os
+
 from constants import Const
+
+class File:
+    def __init__(self, path, devIDs):
+        self.path = path
+        self.devIDs = devIDs
+    def getPath(self):
+        return self.path
+    def getDevIDs(self):
+        return self.devIDs
 
 class Files:
 
     def __init__(self):
-        self.files = self._loadFileDB()
+        self.fileList = self._loadFileDB()
+        self.files = []
+        for f in self.fileList:
+            self.files.append(File(f['PATH'], f['DEVICES']))
 
     def _loadFileDB(self):
         if os.path.exists(Const.FILE_DB_DIR): # files.json varsa
@@ -16,7 +29,10 @@ class Files:
 
     def _saveFileDB(self):
         with open(Const.FILE_DB_DIR, 'w') as f:
-            json.dump(self.files, f, indent=4)
+            json.dump(self.fileList, f, indent=4)
+
+    def getFiles(self):
+        return self.files
 
     def listAvailableFiles(self):
         """
@@ -36,11 +52,13 @@ class Files:
             return False
 
         # Dosya zaten kayıtlı mı kontrol et
-        for entry in self.files:
+        for entry in self.fileList:
             if entry["PATH"] == file_path:
                 # Varsa, cihaz listesine ekle
                 entry["DEVICES"] = list(set(entry["DEVICES"] + device_ids))
                 self._saveFileDB()
+                
+                self.files.append(File(entry['PATH'], entry['DEVICES']))
                 return True
 
         # Yeni kayıt
@@ -48,7 +66,10 @@ class Files:
             "PATH": file_path,
             "DEVICES": device_ids
         }
-        self.files.append(new_entry)
+        self.fileList.append(new_entry)
+        
+        self.files.append(File(new_entry['PATH'], new_entry['DEVICES']))
+        
         self._saveFileDB()
         return True
 
@@ -56,19 +77,19 @@ class Files:
         """
         Kayıtlı tüm dosyaları ve eşleştirildikleri cihazları döndürür
         """
-        return self.files
+        return self.fileList
     
     def removeDevice(self, filename, device_id):
         """
         Belirtilen dosyadan belirtilen cihazı kaldırır
         """
         file_path = os.path.join(Const.SHARED_DIR, filename)
-        for entry in self.files:
+        for entry in self.fileList:
             if entry["PATH"] == file_path and device_id in entry["DEVICES"]:
                 entry["DEVICES"].remove(device_id)
                 # Cihaz listesi boşsa dosya kaydını kaldır
                 if not entry["DEVICES"]:
-                    self.files.remove(entry)
+                    self.fileList.remove(entry)
                 self._saveFileDB()
                 return True
         return False
@@ -78,9 +99,9 @@ class Files:
         Belirtilen dosyayı tamamen kaldırır
         """
         file_path = os.path.join(Const.SHARED_DIR, filename)
-        initial_len = len(self.files)
-        self.files = [entry for entry in self.files if entry["PATH"] != file_path]
-        if len(self.files) != initial_len:
+        initial_len = len(self.fileList)
+        self.fileList = [entry for entry in self.fileList if entry["PATH"] != file_path]
+        if len(self.fileList) != initial_len:
             self._saveFileDB()
             return True
         return False

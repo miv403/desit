@@ -5,8 +5,8 @@ import json
 from device import Device
 from constants import Const
 
-CONFIG_DIR = Const.CONFIG_DIR
-CFG_EXT = Const.CFG_EXT
+# CONFIG_DIR = Const.CONFIG_DIR
+# CFG_EXT = Const.CFG_EXT
 
 DEBUG = Const.DEBUG
 
@@ -24,16 +24,16 @@ class Config:
     def getConfigFromFile(self):
         
         try:
-            configFile = open(f"{CONFIG_DIR}{Const.HOSTNAME}.{CFG_EXT}", "r")
+            configFile = open(f"{Const.CONFIG_DIR}{Const.HOSTNAME}.{Const.CFG_EXT}", "r")
         except FileNotFoundError:
             if DEBUG:
                 print(f"[CONFIG] config file doesn't exist")
             
-            if not os.path.isdir(CONFIG_DIR):
-                os.makedirs(CONFIG_DIR, exist_ok=True)
+            if not os.path.isdir(Const.CONFIG_DIR):
+                os.makedirs(Const.CONFIG_DIR, exist_ok=True)
             
             self.buildConfig()
-            configFile = open(f"{CONFIG_DIR}{Const.HOSTNAME}.{CFG_EXT}", "r")
+            configFile = open(f"{Const.CONFIG_DIR}{Const.HOSTNAME}.{Const.CFG_EXT}", "r")
         
         cfgDict = json.load(configFile)
         configFile.close()
@@ -45,7 +45,7 @@ class Config:
         if DEBUG:
             print(f"[CONFIG] building config file")
 
-        configFile = open(f"{CONFIG_DIR}{Const.HOSTNAME}.{CFG_EXT}", "w")
+        configFile = open(f"{Const.CONFIG_DIR}{Const.HOSTNAME}.{Const.CFG_EXT}", "w")
         
         cfgDict = {
             "ID" : None,
@@ -65,12 +65,12 @@ class Config:
 
         self._config['ID'] = newID
 
-        configFile = open(f"{CONFIG_DIR}{Const.HOSTNAME}.{CFG_EXT}", "w")
+        configFile = open(f"{Const.CONFIG_DIR}{Const.HOSTNAME}.{Const.CFG_EXT}", "w")
         
         json.dump(self._config, configFile, indent=4)
         configFile.close()
     
-    def addNewDevice(self, newDevice):
+    def addNewDevice(self, newDevice: Device):
         newID = newDevice.getID()
         knownIDs = [i for i in self._config['knownDevices'] if i['ID'] == newID]
         
@@ -81,11 +81,12 @@ class Config:
         self._config['knownDevices'].append(
             {
                 'ID' : newID,
+                'USERNAME' : newDevice.getUsername(),
                 'PUB_KEY' : newDevice.getPubKey()
             }
         )
 
-        configFile = open(f"{CONFIG_DIR}{Const.HOSTNAME}.{CFG_EXT}", "w")
+        configFile = open(f"{Const.CONFIG_DIR}{Const.HOSTNAME}.{Const.CFG_EXT}", "w")
 
         json.dump(self._config, configFile, indent=4)
         configFile.close()
@@ -105,7 +106,8 @@ class Config:
                             # self.HOSTNAME,
                             self.ID,        # Host.ID
                             self.PUB_KEY,
-                            dev['PUB_KEY'])
+                            dev['PUB_KEY'],
+                            dev['USERNAME'])
             
             devices.append(device)
         

@@ -2,15 +2,16 @@ import zmq
 
 from services import ServiceDiscover
 from messaging import Messaging, MsgType
+from constants import Const
 
 class Device:
 
     def __init__(self,
                 id_,                # self.ID
-                #hostName,           # Host.HOSTNAME
                 hostID,             # Host.ID
                 hostPubKey,         # Host.PUB_KEY
-                devPubKey = None):  # self.PUB_KEY
+                devPubKey = None,
+                username = None):  # self.PUB_KEY
 
         self.ID = id_
         # self.ADDR = self.discoverAddr()
@@ -34,6 +35,9 @@ class Device:
             self.USERNAME = request['USERNAME'] # TODO test: USERNAME
         else:
             self.PUB_KEY = devPubKey
+            self.USERNAME = username
+        
+        self.addToKeyChain()
 
     def getID(self):
         return self.ID
@@ -41,6 +45,24 @@ class Device:
         return self.ADDR
     def getPubKey(self):
         return self.PUB_KEY
+    def getUsername(self):
+        return self.USERNAME
+
+    def addToKeyChain(self):
+        
+        authKeyFile = open(Const.AUTH_KEYS_FILE, "r")
+
+        keys = authKeyFile.readlines()
+        authKeyFile.close()
+        
+        pub = str(self.PUB_KEY) + "\n" # anahtarlar içinde ararken "\n" eklenmesi gerekiyor
+        
+        if not pub in keys:
+            authKeyFile = open(Const.AUTH_KEYS_FILE, "a")
+            authKeyFile.write(pub)
+            return
+        
+        print(f"[DEVICE] KEY already added to {Const.AUTH_KEYS_FILE}")
 
     def discoverAddr(self):
         # ID ile IP adresi keşfi
@@ -50,6 +72,7 @@ class Device:
 
         if not addr:
             print(f"[DEVICE] {self.ID} is offline")
+        self.ADDR = addr
         return addr
 
     def req(self, msgDict) -> dict:
