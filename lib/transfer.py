@@ -2,7 +2,7 @@ import subprocess
 
 from lib.constants import Const
 
-HOST_KEY_DIR_TEMP = f"{Const.HOME_DIR}/proje/src/.desit/hostkey/"
+# HOST_KEY_DIR_TEMP = f"{Const.HOME_DIR}/proje/src/.desit/hostkey/"
 
 class Transfer:
     
@@ -20,7 +20,7 @@ class Transfer:
                 "rsync",
                 "--mkpath",
                 "-e",
-                f'ssh -i {HOST_KEY_DIR_TEMP}{Const.HOSTNAME}',
+                f'ssh -i {Const.HOST_KEY_DIR}{Const.HOSTNAME}',
                 f"{filePath}",
                 f"{username}@{addr}:/home/{username}/.desit/shared/"
                 ]

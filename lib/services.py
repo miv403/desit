@@ -3,7 +3,9 @@ import socket
 import time
 import sys
 
-DEBUG = "--debug" in sys.argv
+from lib.constants import Const
+
+DEBUG = Const.DEBUG
 
 class Listener(ServiceListener):
 

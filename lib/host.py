@@ -18,15 +18,9 @@ from lib.transfer import Transfer
 
 # DEBUG = "--debug" in sys.argv
 
-# CONFIG_DIR = "./.desit/"
-# KEYS_DIR = "./.desit/keys/"
-# HOST_KEY_DIR = "./.desit/hostkey/"
-
 class Host:
 
     def __init__(self):
-
-        # self.HOSTNAME = Const.HOSTNAME
         
         self.LOCALHOST = self.getLocalIP()
 

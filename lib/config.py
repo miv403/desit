@@ -5,9 +5,6 @@ import json
 from lib.device import Device
 from lib.constants import Const
 
-# CONFIG_DIR = Const.CONFIG_DIR
-# CFG_EXT = Const.CFG_EXT
-
 DEBUG = Const.DEBUG
 
 class Config:

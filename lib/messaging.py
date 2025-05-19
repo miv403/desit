@@ -3,8 +3,6 @@ from lib.constants import Const
 
 class MsgType(Enum):
     
-    # connectionREQ = 0
-    # connectionOK = 1
     hello = 0
     reqPubKey = 1   # REQ::PUB_KEY
     repPubKey = 2   # REP::PUB_KEY
