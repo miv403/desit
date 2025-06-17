@@ -1,4 +1,16 @@
-# COM2010 Yazılım Mühendisliği Dönem Ödevi
+<h1 align="center"><img src="./docs/img/Desit-banner.png" width="300px" alt="Desit Banner"> </h1>
 
-- 425470 - Semih DOĞAN
-- 434340 - Ahmet Emin KIZILKAN
+Merkezi bilgisayarlara bağlı kalmadan yerel ağdaki bilgisayarlar için dosya eşitleme düzeneği.
+
+File synchronization system for computers that on same local network without being dependant to a central/remote computer/server.
+
+<!-- markdownlint-configure-file { 
+  "no-inline-html": {
+    "allowed_elements": [
+        "h1",
+        "u",
+        "br",
+        "img",
+    ]
+  }
+} -->
